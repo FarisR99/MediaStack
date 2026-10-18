@@ -20,14 +20,23 @@
   and msbuild are on PATH. Record the route that works in
   docs/building-windows.md and docs/agents/build-windows.md.
 
+.PARAMETER Jobs
+  How many source files compile at once (default: half the logical CPUs).
+  NVEnc's CUDA files are huge: with every core busy, and nvcc's own -t 0
+  fanning each file out per GPU architecture, cicc/cl run out of memory
+  ("compiler is out of heap space", "LLVM error : out of memory"). Lower it
+  further if that still happens. nvcc always runs single-threaded here.
+
 .EXAMPLE
   .\scripts\windows\nvencc-spike.ps1
+  .\scripts\windows\nvencc-spike.ps1 -Jobs 4
   .\scripts\windows\nvencc-spike.ps1 -Route B
 #>
 param(
     [ValidateSet('A', 'B')] [string] $Route = 'A',
     [string] $Msys2Root = 'C:\msys64',
-    [string] $Configuration = 'RelStatic'
+    [string] $Configuration = 'RelStatic',
+    [int] $Jobs = [math]::Max(1, [int]([Environment]::ProcessorCount / 2))
 )
 $ErrorActionPreference = 'Stop'
 
@@ -97,8 +106,11 @@ if ($dovi) {
     Copy-Item $dovi.FullName $StageLib
 } else { Write-Warning 'libdovi DLL not found in UCRT64 (pacman -S mingw-w64-ucrt-x86_64-libdovi)' }
 
-Write-Host "==> MSBuild NVEncC ($Configuration|x64)"
-& msbuild.exe "$Nvenc\NVEnc.sln" /t:NVEncC /m /nologo /v:minimal "/p:Configuration=$Configuration" /p:Platform=x64
+Write-Host "==> MSBuild NVEncC ($Configuration|x64, $Jobs jobs)"
+# One project at a time, $Jobs files at a time, and nvcc without -t 0
+# (cudaver.props sets CUDA_THREADS; a global property overrides it).
+& msbuild.exe "$Nvenc\NVEnc.sln" /t:NVEncC /m:1 /nologo /v:minimal "/p:Configuration=$Configuration" /p:Platform=x64 `
+    "/p:CL_MPCount=$Jobs" "/p:CUDA_THREADS=-t 1"
 if ($LASTEXITCODE) { throw "MSBuild failed (route $Route). Try the other route, and note the error in docs/building-windows.md" }
 
 $Built = Join-Path $Nvenc "_build\x64\$Configuration"

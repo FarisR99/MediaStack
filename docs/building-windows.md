@@ -52,6 +52,8 @@ If linking fails, or NVEncC crashes at startup, try the fallback, which builds a
 .\scripts\windows\nvencc-spike.ps1 -Route B
 ```
 
+NVEncC has about 90 very large CUDA files. If the build fails with "compiler is out of heap space" or "LLVM error : out of memory", too many of them compiled at once. The script compiles half as many files at a time as you have CPU threads; pass a lower number, e.g. `-Jobs 4`. Rerunning is incremental, so files that already compiled aren't redone.
+
 > **Status:** this step hasn't been run on a real Windows machine yet ("spike"). When you've tried it, note which route worked here, and ask an agent to make it the permanent `build-nvencc.ps1`.
 
 ## 4. Package a portable folder

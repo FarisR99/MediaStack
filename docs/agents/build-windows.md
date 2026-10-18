@@ -34,7 +34,9 @@ You can't run any of this from WSL/Linux. When you change Windows build scripts,
 - **Route A** (default): FFmpeg's MinGW shared build already installs MSVC-usable import libs (`bin/*.lib`, made by `lib.exe` if it's on PATH, otherwise `dlltool`). The spike copies those, plus DLLs, and makes `dovi.lib` from UCRT64's libdovi DLL (dumpbin → .def → lib.exe). Both use UCRT, so the C ABI matches MSVC.
 - **Route B**: needed only if Route A fails to link or crashes. Its FFmpeg lacks the external libs (it's MSVC-built), so NVEncC loses nothing it needs, but its FFmpeg differs from mpv's.
 
-**Spike status: not yet run.** When the user reports a result, record the winning route, any errors and any vcxproj changes here and in `docs/building-windows.md`. Commit vcxproj changes on `nvenc` `mediastack`. Then consider renaming the script to `build-nvencc.ps1`.
+**First spike run (Route A, CUDA 12.8, 24 threads):** it failed before linking, with the compiler running out of memory (`C1060 out of heap space`, `LLVM error : out of memory`, cicc `0xC0000409`, then cascading `C1033 cannot open program database`). The cause was `/m` with `CL_MPCount` = all cores, times nvcc `-t 0` (`CUDA_THREADS` in `nvenc/cudaver.props`) fanning out per architecture. The script now passes `/m:1 /p:CL_MPCount=<Jobs> /p:CUDA_THREADS="-t 1"`, with `-Jobs` defaulting to half the threads. Global properties override cudaver.props, so no nvenc change is needed. Whether the CUDA build customization honours `CL_MPCount` is unconfirmed; `-t 1` alone cuts cicc processes 4×.
+
+**Spike status: Route A not yet past compilation.** When the user reports a result, record the winning route, any errors and any vcxproj changes here and in `docs/building-windows.md`. Commit vcxproj changes on `nvenc` `mediastack`. Then consider renaming the script to `build-nvencc.ps1`.
 
 ## Gotchas
 
