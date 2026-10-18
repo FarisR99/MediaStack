@@ -2,6 +2,8 @@
 
 Most of the stack is built with MSYS2's **UCRT64** toolchain. NVEncC is the exception: upstream only supports building it with Visual Studio, so it gets its own step.
 
+> **Status:** steps 1, 2 and 4 have been run on a real Windows PC (RTX 5090), and FFmpeg's and mpv's NVENC smoke tests pass. Step 3 (NVEncC) hasn't been tried yet.
+
 ## 1. Install the dependencies (once)
 
 Open **MSYS2 UCRT64** from the Start menu, `cd` to the repo (e.g. `cd /c/src/MediaStack`), then:

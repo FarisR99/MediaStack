@@ -4,6 +4,12 @@ Human version: `docs/building-windows.md`.
 
 You can't run any of this from WSL/Linux. When you change Windows build scripts, check them for bash syntax (`bash -n`), reason carefully about MSYS2 path behaviour, and say in the commit that it's untested on Windows.
 
+**Verified on Windows (2026-10-18, RTX 5090, MSYS2 gcc 16.2):** `deps.sh`, `build.sh`, `package.sh` and `activate.ps1` work. Smoke tests pass from `dist` in plain PowerShell: FFmpeg NVENC encode, mpv `--vf=gpu=api=d3d11:hw-output=yes:hw-format=nv12` straight into hevc_nvenc ("Rendering directly to nv12 hardware frames"), and mpv `--vf=gpu=api=vulkan` into hevc_nvenc. NVEncC (spike) is still unverified. Lessons from that first run:
+- mpv's `-Dwin32-smtc` needs `cppwinrt` (now in `deps.sh`).
+- pacman's `ffmpeg`/`libplacebo` can't always be removed, because packages like `ffms2` depend on them. That's fine: the stack's DLLs sit next to its exes.
+- Users may have older mpv/FFmpeg on the *Machine* PATH, which beats the User PATH. Don't tell them to edit PATH persistently; use `activate.ps1` (session only).
+- The Vulkan path logs `hevc_nvenc: ignoring invalid SAR: 0/0`: vf_gpu's software output frames leave `p_w`/`p_h` unset. It's harmless (avcodec treats it as unknown).
+
 ## Environments
 
 - **MSYS2 UCRT64 only** (`$MSYSTEM == UCRT64`; package prefix `mingw-w64-ucrt-x86_64-`). This covers nv-codec-headers, libplacebo, FFmpeg and mpv. Every script refuses to run in other MSYS2 environments.
