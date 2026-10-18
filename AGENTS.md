@@ -14,7 +14,7 @@ This file is always loaded, so it stays short. **Read the routed doc before you 
 | `mpv/` | FarisR99/mpv, branch `master` (the fork itself; upstream mpv-player/mpv) |
 | `nv-codec-headers/` | FFmpeg/nv-codec-headers, pinned to a release tag; not forked, never modified |
 | `stack.conf` | Single source of truth: project list, upstream URLs, tool/CUDA/SDK versions |
-| `scripts/` | `setup.sh`, `status.sh`, `bump.sh`, `merge-upstream.sh`, `sync-agent-docs.sh`; `common/` (shared build scripts), `windows/`, `linux/` |
+| `scripts/` | `setup.sh`, `status.sh`, `pull.sh`, `bump.sh`, `merge-upstream.sh`, `sync-agent-docs.sh`; `common/` (shared build scripts), `windows/`, `linux/` |
 | `agents/<project>/AGENTS.md` | Per-project agent docs (source of truth; copied into each checkout) |
 | `docs/agents/` | On-demand agent topic docs (router below) |
 | `out/` | Build trees, prefixes, packages (gitignored) |
@@ -61,6 +61,7 @@ Read the matching doc **before** starting work of that kind.
 ```bash
 scripts/setup.sh                 # after clone or pull: init, align branches, copy agent docs
 scripts/status.sh [--fetch]      # branch / pin / push / upstream state of every submodule
+scripts/pull.sh [project...]     # fast-forward forks to commits pushed to origin from elsewhere
 scripts/bump.sh --ai <project>   # record new pins (agents: always pass --ai)
 scripts/linux/export.sh          # Docker build -> out/linux/mediastack-<sha>.tar.zst
 ```

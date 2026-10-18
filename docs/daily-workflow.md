@@ -48,6 +48,17 @@ scripts/setup.sh
 
 `setup.sh` moves each project to the newly pinned commit, staying on its branch. Then rebuild.
 
+## Getting commits you pushed to a fork from somewhere else
+
+If you commit to a project on another machine and push it straight to your fork, without going through MediaStack, pull it in here with:
+
+```bash
+scripts/pull.sh mpv          # or no name: every forked project
+scripts/bump.sh mpv          # record the new commits in MediaStack
+```
+
+`scripts/pull.sh --bump` does both in one go. It only fast-forwards. If you also have unpushed local commits in that project, it stops and tells you to merge (`git -C mpv merge origin/master`). It never throws work away.
+
 ## Seeing what's going on
 
 ```bash

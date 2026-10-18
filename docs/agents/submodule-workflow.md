@@ -18,6 +18,10 @@ Human version: `docs/daily-workflow.md` and `docs/updating-upstream.md`.
 
 Superrepo-only changes (scripts, docs, `stack.conf`) are ordinary commits in the superrepo.
 
+## Pulling fork commits pushed from elsewhere
+
+The user also commits from other machines and pushes to the forks directly. `scripts/pull.sh [--bump] [project...]` fetches `origin` and fast-forwards each tracked branch to `origin/<branch>`. It never resets: if the branch has diverged, it reports that and leaves the branch alone. Then bump the pins (`scripts/bump.sh --ai <p>`, or `--bump`, which commits without the `AI:` prefix, so agents use bump.sh). If a pulled commit adds a fork feature, list it under the project's "Customisations" section.
+
 ## Merging upstream
 
 `scripts/merge-upstream.sh <p>` fetches `upstream/master` and merges it with git's default message (no `AI:` prefix, by rule). On conflicts it stops. Resolve them keeping our customisations: look them up in the project's "Customisations" section in `agents/<p>/AGENTS.md`. Then `git -C <p> commit --no-edit`, rebuild, smoke-test, and bump.
@@ -39,6 +43,7 @@ After merging libplacebo, the API version changes (`libplacebo/meson.build`, top
 | Submodule on a detached HEAD | `scripts/setup.sh`. It checks out the tracked branch, fast-forwarding it to the pin when the pin is newer. |
 | `status.sh` shows "behind pin" after `git pull` of the superrepo | `scripts/setup.sh` |
 | "diverged from pin" | Someone committed on another machine and you committed locally. Merge `origin/<branch>` into the local branch inside the submodule; don't reset. |
+| `status.sh` shows origin behind (`-N`) | Commits were pushed from elsewhere: `scripts/pull.sh <p>`, then bump |
 | "branch not pushed" | Normal until the user pushes the fork. Mention it; don't push it yourself. |
 | Agent docs stale | `scripts/sync-agent-docs.sh` |
 
