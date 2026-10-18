@@ -32,7 +32,8 @@ Build order (each one links the previous ones from the stack prefix): nv-codec-h
 7. **Say what you didn't test.** Windows-only code can't be built from WSL/Linux. Say so in the commit body, e.g. "Not yet built on Windows."
 8. **FFmpeg is built GPL + nonfree.** Never publish or redistribute the binaries.
 9. Keep `stack.conf` the only place versions are written down. Scripts and the Dockerfile read from it.
-10. Respect each upstream's style inside its tree (see the per-project doc). Keep the diff against upstream small and self-contained, so that merges stay cheap.
+10. **All build output goes under `out/`**, the only build location that is gitignored. Never build in-tree: no `meson setup build` or `./configure` inside a submodule, and no `build/` dir at the root. Use the stack scripts, or point `meson setup` at `out/<target>/build/<project>`. If a stray build directory or generated file shows up in `git status`, treat it as a bug. Find what created it and fix that, then delete the stray output after checking what it contains. Never paper over it by adding it to `.gitignore` or `info/exclude`.
+11. Respect each upstream's style inside its tree (see the per-project doc). Keep the diff against upstream small and self-contained, so that merges stay cheap.
 
 ## Router
 
