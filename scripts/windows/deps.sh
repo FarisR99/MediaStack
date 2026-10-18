@@ -10,7 +10,7 @@ p=mingw-w64-ucrt-x86_64
 pacman -S --needed --noconfirm \
     git make diffutils patch zstd \
     $p-toolchain $p-meson $p-ninja $p-pkgconf $p-nasm $p-ccache $p-python $p-tools-git \
-    $p-clang \
+    $p-clang $p-cppwinrt \
     $p-vulkan-headers $p-vulkan-loader $p-shaderc $p-spirv-cross \
     $p-lcms2 $p-libdovi $p-libass $p-dav1d $p-x264 $p-x265 $p-libvpl $p-amf-headers \
     $p-luajit $p-angleproject $p-libjpeg-turbo $p-libarchive $p-libbluray \
