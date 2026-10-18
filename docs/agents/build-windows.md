@@ -18,6 +18,7 @@ You can't run any of this from WSL/Linux. When you change Windows build scripts,
 | `scripts/windows/nvencc-spike.ps1 [-Route A\|B]` | Stages `nvenc/ffmpeg_lgpl/` (gitignored by NVEnc), runs `msbuild NVEnc.sln /t:NVEncC RelStatic x64`, and copies to `out/ucrt64/nvencc/`. |
 | `scripts/windows/build-ffmpeg-msvc.sh` | Route B only: minimal shared FFmpeg built with `--toolchain=msvc` into `out/msvc/prefix`. |
 | `scripts/windows/package.sh` | Portable `out/ucrt64/dist/`: exes plus the `ldd` closure of non-system DLLs, NVEncC if built, and `BUILDINFO.txt`. |
+| `scripts/windows/activate.ps1` | Prepends `out\ucrt64\dist` to `$env:Path` for the current PowerShell session only (never the registry). Run it before testing on a PC that also has older mpv/FFmpeg on PATH. |
 
 ## How NVEncC links FFmpeg on Windows
 

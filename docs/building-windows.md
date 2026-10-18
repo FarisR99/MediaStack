@@ -68,6 +68,14 @@ scripts/windows/package.sh
 
 The folder runs on any Windows PC with an NVIDIA driver; it doesn't need MSYS2. Don't share it outside your own machines (see [licensing](licensing.md)).
 
+To use it from a PowerShell window, run:
+
+```powershell
+D:\path\to\MediaStack\scripts\windows\activate.ps1
+```
+
+This puts the folder **first** on PATH for that window only, ahead of any older mpv or FFmpeg you have installed. Nothing is saved, so closing the window undoes it. Check with `Get-Command mpv, ffmpeg`. In PowerShell, plain `where` is a different command; use `where.exe`. If PowerShell refuses to run scripts, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once.
+
 ## What gets built
 
 | Project | Notable options on Windows |
