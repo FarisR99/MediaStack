@@ -1,0 +1,38 @@
+# Windows build (agent notes)
+
+Human version: `docs/building-windows.md`.
+
+You can't run any of this from WSL/Linux. When you change Windows build scripts, check them for bash syntax (`bash -n`), reason carefully about MSYS2 path behaviour, and say in the commit that it's untested on Windows.
+
+## Environments
+
+- **MSYS2 UCRT64 only** (`$MSYSTEM == UCRT64`; package prefix `mingw-w64-ucrt-x86_64-`). This covers nv-codec-headers, libplacebo, FFmpeg and mpv. Every script refuses to run in other MSYS2 environments.
+- **Developer PowerShell for VS 2022** (plus the CUDA Toolkit, `CUDA_PATH`, and optionally `AVISYNTH_SDK`/`VAPOURSYNTH_SDK`) for NVEncC, which upstream builds only with MSVC.
+
+## Scripts
+
+| Script | Does |
+|---|---|
+| `scripts/windows/deps.sh` | pacman deps. **Doesn't** install pacman's ffmpeg/libplacebo, and warns if they're present. |
+| `scripts/windows/build.sh [project...]` | `MS_TARGET=ucrt64` → `scripts/common/build-all.sh`. Out-of-tree builds in `out/ucrt64/build/<p>`, installs into the **dev prefix** `out/ucrt64/prefix`. Skips nvenc. |
+| `scripts/windows/nvencc-spike.ps1 [-Route A\|B]` | Stages `nvenc/ffmpeg_lgpl/` (gitignored by NVEnc), runs `msbuild NVEnc.sln /t:NVEncC RelStatic x64`, and copies to `out/ucrt64/nvencc/`. |
+| `scripts/windows/build-ffmpeg-msvc.sh` | Route B only: minimal shared FFmpeg built with `--toolchain=msvc` into `out/msvc/prefix`. |
+| `scripts/windows/package.sh` | Portable `out/ucrt64/dist/`: exes plus the `ldd` closure of non-system DLLs, NVEncC if built, and `BUILDINFO.txt`. |
+
+## How NVEncC links FFmpeg on Windows
+
+- The vcxproj adds `..\ffmpeg_lgpl\include` and `..\ffmpeg_lgpl\lib\$(Platform)`. The sources `#pragma comment(lib, "avcodec.lib")` etc. and `dovi.lib`.
+- The post-build step copies `avcodec-*.dll`, `libass-*.dll` and `libplacebo-*.dll` from that folder.
+- At runtime NVEncC expects specific DLL names (`AVCODEC_DLL_NAME` in `nvenc/NVEncCore/rgy_avutil.h`), and loads `libass-9.dll` and `libplacebo-<api>.dll` dynamically.
+- **Route A** (default): FFmpeg's MinGW shared build already installs MSVC-usable import libs (`bin/*.lib`, made by `lib.exe` if it's on PATH, otherwise `dlltool`). The spike copies those, plus DLLs, and makes `dovi.lib` from UCRT64's libdovi DLL (dumpbin → .def → lib.exe). Both use UCRT, so the C ABI matches MSVC.
+- **Route B**: needed only if Route A fails to link or crashes. Its FFmpeg lacks the external libs (it's MSVC-built), so NVEncC loses nothing it needs, but its FFmpeg differs from mpv's.
+
+**Spike status: not yet run.** When the user reports a result, record the winning route, any errors and any vcxproj changes here and in `docs/building-windows.md`. Commit vcxproj changes on `nvenc` `mediastack`. Then consider renaming the script to `build-nvencc.ps1`.
+
+## Gotchas
+
+- `ffmpeg --enable-cuda-nvcc` doesn't work under MinGW, because nvcc needs `cl.exe` as its host compiler. Windows uses `--enable-cuda-llvm` (clang from deps.sh) instead, which gives the same CUDA filters.
+- Paths: MSYS2 converts POSIX paths for native programs. `cygpath -m` gives `C:/...` paths for `.pc` files (nv-codec-headers' Makefile already does this).
+- Bash scripts must stay LF. `.gitattributes` forces this; don't add `\r`.
+- `core.longpaths=true` is set by `setup.sh` (FFmpeg/NVEnc have deep paths).
+- The dev prefix works when run from a UCRT64 shell (the DLLs sit next to `mpv.exe` in `prefix/bin`, and UCRT64 is on PATH). Use `dist/` for running outside MSYS2.

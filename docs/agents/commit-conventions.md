@@ -1,0 +1,30 @@
+# Commit conventions (agent notes)
+
+These apply in **every** repo of the stack, including the superrepo.
+
+## Agent-authored commits
+
+```
+AI: <area>: <imperative summary, lower case after the colon>
+
+<Why the change is needed and what it does, wrapped prose. Mention what was
+and wasn't tested, e.g. "Not yet built on Windows.">
+
+Co-Authored-By: <Model name> <noreply@anthropic.com>
+```
+
+- `<area>` follows the target project's own convention. For mpv that's the file or subsystem (`vf_gpu`, `vo_lavc`, `ra_pl`; see `mpv/DOCS/contribute.md`). FFmpeg uses `lavc/nvenc` or `avfilter/vf_libplacebo`. libplacebo uses `vulkan`, `renderer` and so on. NVEnc uses the file stem (`libplacebo`, `avutil`). In the superrepo the areas are `scripts`, `docs`, `linux`, `windows`, `stack`, `bump`, and `repo`.
+- One logical change per commit, so that upstream merges and cherry-picks stay easy.
+- Superrepo pin bumps: `scripts/bump.sh --ai ...` produces `AI: bump: <projects>` with the commit list.
+
+## Merge commits
+
+Merge commits keep git's default message (`Merge remote-tracking branch 'upstream/master' into mediastack`, etc.) with **no `AI:` prefix**, even when an agent ran the merge. A conflict-resolution note in the body is fine.
+
+## Commits by the user
+
+The user's own commits don't need the prefix. Never rewrite them.
+
+## mpv specifics
+
+mpv's `ci/lint-commit-msg.py` enforces upstream's format (`area: summary`, line lengths). The fork's `AI: ` prefix is a deliberate deviation for fork-only commits. Keep the rest of the message lint-clean, so the commit can be upstreamed by dropping the prefix.

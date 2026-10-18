@@ -1,0 +1,19 @@
+[submodule "mpv"]
+	path = mpv
+	url = https://github.com/FarisR99/mpv.git
+	branch = master
+[submodule "nv-codec-headers"]
+	path = nv-codec-headers
+	url = https://github.com/FFmpeg/nv-codec-headers.git
+[submodule "libplacebo"]
+	path = libplacebo
+	url = https://github.com/FarisR99/libplacebo.git
+	branch = mediastack
+[submodule "nvenc"]
+	path = nvenc
+	url = https://github.com/FarisR99/NVEnc.git
+	branch = mediastack
+[submodule "ffmpeg"]
+	path = ffmpeg
+	url = https://github.com/FarisR99/FFmpeg.git
+	branch = mediastack

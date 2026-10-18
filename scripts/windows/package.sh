@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Assemble a portable folder (out/ucrt64/dist) that runs outside MSYS2:
+# stack binaries + every DLL they need from the prefix and from UCRT64, plus
+# NVEncC if scripts/windows/nvencc-spike.ps1 has built it.
+set -euo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/../common/env.sh"
+[[ "$MS_TARGET" == ucrt64 ]] || die "run from the MSYS2 UCRT64 shell"
+cd "$STACK_ROOT"
+
+dist=out/ucrt64/dist
+rm -rf "$dist"
+mkdir -p "$dist"
+
+for f in mpv.exe mpv.com ffmpeg.exe ffprobe.exe; do
+    [[ -f "$MS_PREFIX/bin/$f" ]] && cp "$MS_PREFIX/bin/$f" "$dist/"
+done
+cp "$MS_PREFIX"/bin/*.dll "$dist/"
+
+nvencc=out/ucrt64/nvencc
+if [[ -f "$nvencc/NVEncC64.exe" ]]; then
+    cp -n "$nvencc"/*.exe "$nvencc"/*.dll "$dist/" 2>/dev/null || true
+else
+    warn "NVEncC not built yet (scripts/windows/nvencc-spike.ps1); packaging without it"
+fi
+
+# ldd lists the full dependency closure; keep everything that isn't a system DLL.
+for f in "$dist"/*.exe "$dist"/*.dll; do
+    ldd "$f" 2>/dev/null | awk '$2 == "=>" { print $3 }'
+done | sort -u | while read -r dll; do
+    case "${dll,,}" in
+        /c/windows/*|"not") continue ;;
+    esac
+    [[ -f "$dll" && ! -f "$dist/$(basename "$dll")" ]] && cp "$dll" "$dist/"
+done
+
+{
+    echo "MediaStack $(git rev-parse --short HEAD 2>/dev/null || echo uncommitted)"
+    echo "built: $(date -u +%Y-%m-%dT%H:%M:%SZ) on $(hostname)"
+    echo "target: ucrt64"
+    for p in $STACK_PROJECTS; do
+        printf '%-17s %s\n' "$p:" "$(git -C "$p" describe --tags --always --dirty 2>/dev/null)"
+    done
+} > "$dist/BUILDINFO.txt"
+
+msg "Packaged $(ls "$dist" | wc -l) files into $dist ($(du -sh "$dist" | cut -f1))"

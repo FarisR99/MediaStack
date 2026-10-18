@@ -1,0 +1,4 @@
+# Build trees, prefixes and packages
+/out/
+.ccache/
+*.log

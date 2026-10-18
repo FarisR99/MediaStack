@@ -1,0 +1,11 @@
+# Context is the superrepo root. Git metadata stays out (it's large and the
+# image never needs it); versions are passed in by export.sh instead.
+.git
+**/.git
+out
+**/AGENTS.md
+**/AGENTS.override.md
+**/CLAUDE.md
+**/CLAUDE.local.md
+docs
+agents
