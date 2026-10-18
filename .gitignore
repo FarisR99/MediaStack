@@ -1,4 +1,21 @@
-# Build trees, prefixes and packages
+# Build trees, prefixes, packages and Docker exports (all builds go here)
 /out/
 .ccache/
 *.log
+
+# Personal agent/tool settings (shared agent docs are AGENTS.md and docs/agents/)
+/CLAUDE.local.md
+/AGENTS.override.md
+.claude/settings.local.json
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS clutter (Windows PCs, macOS)
+Thumbs.db
+desktop.ini
+.DS_Store
