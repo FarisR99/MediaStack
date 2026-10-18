@@ -58,7 +58,7 @@ The `mediastack` branches were created locally, so they don't exist on the forks
 git -C ffmpeg push -u origin mediastack
 git -C libplacebo push -u origin mediastack
 git -C nvenc push -u origin mediastack
-git push -u origin main
+git push -u origin master
 ```
 
 The superrepo refuses to push while a submodule commit it points to isn't on GitHub yet; that's deliberate. Until you've pushed, a clone on another PC fails to fetch those commits.
