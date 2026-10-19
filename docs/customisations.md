@@ -18,6 +18,7 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
   - With `hw-output`, frames stay on the GPU as D3D11 textures and go straight to NVENC or Intel QSV encoders, instead of being downloaded to system memory and uploaded again.
   - With `hw-format=nv12`, the conversion to YUV happens on the GPU: BT.709, or BT.2020 for HDR, limited range, correctly sited chroma. This gives better colour than letting the encoder convert.
 - **Faster encoding from software frames:** the filter reads finished frames back from the GPU in the background while it renders the next ones, instead of waiting for each download. With Vulkan this used to be most of the frame time.
+- **Smaller, correctly coloured downloads:** when the encoder accepts NV12, the filter converts frames to NV12 on the GPU before reading them back. That's under half the data of RGB, and avoids the encoder's own BT.601 conversion.
 - **Persistent shader cache** for the filter, so start-up is faster on repeat runs.
 - **Stability fixes:** context set-up and teardown, subtitle state, device options, OpenGL readback. `--vf=gpu=api=vulkan` no longer crashes on machines without a working Vulkan driver; it reports an error instead. That fix would also suit upstream mpv.
 - **Repo housekeeping:** Vulkan is required, unused CI platforms are removed, and Windows (MSYS2) CI builds are uploaded.

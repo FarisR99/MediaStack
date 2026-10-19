@@ -49,6 +49,7 @@ Fork-only commits (`git log --oneline upstream/master..master --no-merges` lists
   - framebuffer readback without `glReadBuffer`
   - `ra_pl` clears without blit support
 - **Faster software readback:** `vf_gpu` downloads software output frames asynchronously, when the GPU supports downloading into buffers. It renders into a ring of targets, downloads each into a persistent buffer, and reads it back only after up to two later frames have been submitted, so rendering overlaps the download.
+- **NV12 software output:** `sw-format=<auto|nv12|rgb>` (`DOCS/man/vf.rst`). With async downloads, the GPU converts to NV12, as it does for NV12 hw frames, and both planes are downloaded: 1.5 instead of 4 bytes per pixel, and no BT.601 conversion in NVENC. auto picks NV12 when the encoder accepts it.
 - **Upstreamable fixes:** `vf_gpu_vulkan` no longer crashes when Vulkan context creation fails (the destructor ran with `priv` unset). Upstream mpv has the same bug.
 - **Repo/CI:** Vulkan is a required dependency. macOS/FreeBSD/OpenBSD CI is removed, and MSYS2 builds are uploaded. Local build scripts are gitignored.
 
