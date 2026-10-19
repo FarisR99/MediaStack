@@ -27,4 +27,8 @@ The source of truth for this doc is `agents/nvenc/AGENTS.md` in the MediaStack s
 
 - `AI: libplacebo: load the libplacebo API version compiled against` (`NVEncCore/rgy_libplacebo.cpp`): it also tries `libplacebo-<PL_API_VER>.dll` / `libplacebo.so.<PL_API_VER>` and `pl_log_create_<PL_API_VER>`, from the headers it was built with. Upstream only knew APIs ≤ 360; the stack's libplacebo is 7.377+. Keep this through merges. If upstream adds its own equivalent, drop ours in favour of theirs.
 
+- `AI: libplacebo: map D3D11 textures once per frame on the filter stream` (`NVEncCore/NVEncFilterD3D11.*`, `NVEncFilterLibplacebo.*`, `run_filter`): on D3D11, all planes are mapped/unmapped in one `cudaGraphicsMapResources` call on the filter's (`cudaStreamNonBlocking`) stream instead of per plane on stream 0. The interop textures are wrapped into `pl_tex` once (`m_plTexIn`/`m_plTexOut`, `wrapTextures`) instead of every frame. The Vulkan path is untouched. On a merge conflict in `run_filter`, keep the D3D11 branches mapping with `stream`.
+- `AI: libplacebo: persistent shader cache` (`rgy_libplacebo.*`, `NVEncFilterLibplacebo.*`): `pl_cache` with `pl_cache_get_file`/`pl_cache_set_file` in `%LOCALAPPDATA%\NVEncC\libplacebo_cache\` or `$XDG_CACHE_HOME`/`~/.cache` `nvencc/libplacebo_cache/`. The loader treats the cache functions as optional (API >= 351).
+- Both were written before a Windows NVEncC build existed. Until a commit says otherwise they are **uncompiled**: build and benchmark them (Anime4K 1080p → 4K, `--vpp-libplacebo-shader`, compare fps against NVEncC 9.38's ~80 fps at P5 and ~137 with `--split-enc forced_3`) before relying on them.
+
 Add every new fork commit here (and to the superrepo's `docs/customisations.md`).

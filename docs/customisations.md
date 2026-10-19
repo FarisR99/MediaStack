@@ -25,6 +25,8 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
 
 ## NVEncC
 
+- **Faster libplacebo filters on Windows.** NVEncC hands each frame between CUDA and Direct3D 11 for libplacebo. Upstream does this one plane at a time, through a CUDA stream that makes the rest of the pipeline wait. With large shaders like Anime4K, a job ends up waiting rather than using the GPU: on an RTX 5090 one Anime4K 1080p → 4K encode tops out around 140 fps, yet two at once reach about 150 together. The fork hands over all planes at once, on the filter's own stream, and prepares the textures once instead of every frame. *Not yet built or measured.*
+- **Shader cache for libplacebo.** Compiled shaders are kept in `%LOCALAPPDATA%\NVEncC\libplacebo_cache` (Linux: `~/.cache/nvencc/libplacebo_cache`), so big shaders like Anime4K aren't compiled again on every run. Delete the folder at any time. *Not yet built.*
 - **Works with current libplacebo.** Upstream NVEncC only recognises libplacebo releases up to API 360, so with the stack's newer libplacebo its `--vpp-libplacebo-*` filters would silently be unavailable. The fork also accepts whichever libplacebo version it was compiled against.
 
 ## FFmpeg
