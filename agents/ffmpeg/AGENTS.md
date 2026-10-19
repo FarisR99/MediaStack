@@ -35,4 +35,6 @@ The source of truth for this doc is `agents/ffmpeg/AGENTS.md` in the MediaStack 
 
 ## Customisations on this branch
 
-None yet: `mediastack` == upstream master at the time it was branched. List every fork commit here as it lands (and in the superrepo's `docs/customisations.md`).
+List every fork commit here as it lands (and in the superrepo's `docs/customisations.md`). `git log --oneline --no-merges upstream/master..mediastack` lists them.
+
+- **Vulkan ↔ CUDA interop on NVIDIA** (`libavutil/hwcontext_vulkan.c`, `vulkan_frames_init`): on devices with `disable_multiplane` (set by deriving from CUDA, or the device option), frames are created without `VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT`. CUDA can't map images with that usage (`cuExternalMemoryGetMappedMipmappedArray` → `CUDA_ERROR_INVALID_VALUE`), which broke `hwupload` between `vulkan` and `cuda` frames in both directions. This enables `vf_libplacebo` → `hevc_nvenc` without a CPU round trip. If an upstream merge rewrites the host-transfer usage logic, keep `!p->disable_multiplane` in the condition, then retest with the recipe in `docs/agents/testing.md`.

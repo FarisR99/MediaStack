@@ -9,7 +9,7 @@ The stack renders video through libplacebo shaders (scaling, tone mapping, user 
 1. **mpv as an encoder.** `--vf=gpu` (the fork's `video/filter/vf_gpu*.c`) renders each frame with the same renderer `--vo=gpu-next` uses, then `vo_lavc` (`--o=... --ovc=hevc_nvenc`) encodes through FFmpeg's libavcodec.
 2. **NVEncC.** rigaya's standalone NVENC encoder uses FFmpeg (libavformat/libavcodec) for demux/decode/audio and loads libplacebo **at runtime** for `--vpp-libplacebo-*` filters.
 
-FFmpeg's own `vf_libplacebo` and the NVENC/NVDEC/CUVID support are built in too, so `ffmpeg` on its own is also a usable front end.
+FFmpeg's own `vf_libplacebo` and the NVENC/NVDEC/CUVID support are built in too, so `ffmpeg` on its own is also a usable front end. Its zero-copy path is `vf_libplacebo` (Vulkan frames) → `hwupload=derive_device=cuda` → NVENC, on a Vulkan device with `disable_multiplane=1` or derived from CUDA. On NVIDIA this needs our FFmpeg fork's host-transfer fix (`agents/ffmpeg/AGENTS.md`).
 
 ## Data flow
 

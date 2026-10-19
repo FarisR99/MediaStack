@@ -29,7 +29,18 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
 
 ## FFmpeg
 
-No changes yet; the `mediastack` branch matches upstream.
+- **libplacebo straight into NVENC.** FFmpeg can hand Vulkan frames to CUDA, which is what NVENC needs, but on NVIDIA that failed with `CUDA_ERROR_INVALID_VALUE` once FFmpeg started creating Vulkan images with "host transfer" usage, which CUDA can't map. The fork leaves that usage off on Vulkan devices set up for CUDA. Upscaling with `libplacebo` and encoding with `hevc_nvenc`/`av1_nvenc` then needs no detour through system memory.
+
+  On an RTX 5090, 1080p → 4K with Anime4K, NVENC `-preset p5` went from about 105 fps (download, then upload) to about 240 fps with `-split_encode_mode 3`, which spreads each frame over the card's three NVENC engines. The split modes only pay off without the CPU round trip. The Vulkan device needs `disable_multiplane=1`, or derive it from CUDA:
+
+  ```powershell
+  ffmpeg -init_hw_device vulkan=vk:0,disable_multiplane=1 -filter_hw_device vk `
+    -hwaccel vulkan -hwaccel_output_format vulkan -i in.mkv `
+    -vf "libplacebo=w=3840:h=2160:format=p010:custom_shader_path=shaders.glsl:shader_cache=pl.cache,hwupload=derive_device=cuda" `
+    -c:v hevc_nvenc -preset p5 -tune hq -rc vbr -cq 22 -split_encode_mode 3 -profile:v main10 out.mkv
+  ```
+
+  To decode with NVDEC instead: `-init_hw_device cuda=cu -init_hw_device vulkan=vk@cu -filter_hw_device vk -hwaccel cuda -hwaccel_output_format cuda`, with `hwupload,` at the start of `-vf`.
 
 ## libplacebo
 

@@ -57,4 +57,13 @@ docker run --rm --gpus all -e NVIDIA_DRIVER_CAPABILITIES=all -v "$PWD":/repo:ro 
 
 ## Windows
 
-You can't run these yourself. Hand the user the equivalent commands from `docs/testing.md` (Windows section), and say that's what you did.
+From an ordinary Linux box you can't run these yourself. Hand the user the equivalent commands from `docs/testing.md` (Windows section), and say that's what you did.
+
+From WSL on a Windows host with MSYS2 (SERVER-1, checkout `C:\src\MediaStack`), you can. Copy a script to `/mnt/c/msys64/tmp/` and run it with `/mnt/c/msys64/usr/bin/bash.exe -c "MSYSTEM=UCRT64 exec /usr/bin/bash -l /tmp/<script>"` (strip `\r` from the output). Windows `.exe`s also run directly from WSL; pass them Windows paths.
+
+**Vulkan → CUDA → NVENC** (the FFmpeg fork's interop fix). It must encode frames; a regression fails with `CUDA_ERROR_INVALID_VALUE` from `cuExternalMemoryGetMappedMipmappedArray`:
+
+```powershell
+ffmpeg -init_hw_device vulkan=vk:0,disable_multiplane=1 -filter_hw_device vk -f lavfi -i testsrc2=s=1920x1080:d=5 `
+  -vf "format=nv12,hwupload,libplacebo=w=3840:h=2160:format=nv12,hwupload=derive_device=cuda" -c:v hevc_nvenc -f null -
+```
