@@ -43,14 +43,19 @@ case "$MS_TARGET" in
 esac
 [[ -n "$MS_CCACHE" ]] && args+=(--cc="ccache gcc" --cxx="ccache g++")
 
-# Reconfigure when the flags change (configure is slow, so skip it otherwise).
+# Reconfigure when the flags change, or when an upstream merge changes configure
+# or the component lists it generates config.h and *_list.c from (configure is
+# slow, so skip it otherwise).
 stamp="$build/.mediastack-configure-args"
-if [[ ! -f "$build/ffbuild/config.mak" || "$(cat "$stamp" 2>/dev/null)" != "${args[*]}" ]]; then
+want="${args[*]} $(cd "$src" && cat configure libavfilter/allfilters.c libavdevice/alldevices.c \
+    libavformat/allformats.c libavformat/protocols.c libavcodec/allcodecs.c libavcodec/parsers.c \
+    libavcodec/bitstream_filters.c libavcodec/hwaccels.h | sha1sum | cut -d' ' -f1)"
+if [[ ! -f "$build/ffbuild/config.mak" || "$(cat "$stamp" 2>/dev/null)" != "$want" ]]; then
     if ! (cd "$build" && "$src/configure" "${args[@]}"); then
         tail -n 40 "$build/ffbuild/config.log" >&2
         die "ffmpeg configure failed (full log: $build/ffbuild/config.log)"
     fi
-    printf '%s' "${args[*]}" > "$stamp"
+    printf '%s' "$want" > "$stamp"
 fi
 make_args=()
 # Builds without .git (Docker) get their version string from FFMPEG_REVISION.

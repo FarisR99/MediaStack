@@ -11,7 +11,7 @@ Human version: the "What gets built" sections of `docs/building-windows.md` and 
 | libdovi | `scripts/linux/build-libdovi.sh` | Linux only (Windows uses pacman's) |
 | libvmaf | `scripts/common/build-vmaf.sh` | Both targets, `VMAF_VERSION` in `stack.conf`. `build-ffmpeg.sh` runs it when `<prefix>/share/mediastack/vmaf-version` doesn't match (the `.pc` version lags the tag). Docker runs it as its own step. Needs `xxd` (MSYS2 `vim`, apt `xxd`): without it libvmaf silently drops its built-in models, as MSYS2's own package does. |
 | libplacebo | `scripts/common/build-libplacebo.sh` | `case "$MS_TARGET"` for per-platform options |
-| FFmpeg | `scripts/common/build-ffmpeg.sh` | reconfigures only when the args change (stamp file in the build dir) |
+| FFmpeg | `scripts/common/build-ffmpeg.sh` | reconfigures only when the args, `configure` or its component lists change (stamp file in the build dir) |
 | mpv | `scripts/common/build-mpv.sh` | Windows set mirrors the fork's `ci/build-msys2.sh` |
 | NVEncC | `scripts/common/build-nvenc.sh` (Linux), `scripts/windows/nvencc-spike.ps1` (Windows) | |
 
