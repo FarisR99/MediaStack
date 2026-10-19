@@ -5,6 +5,11 @@ set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 msg "ffmpeg -> $MS_PREFIX"
 
+# libvmaf isn't a stack project; build it here when the prefix lacks the pinned version.
+if [[ "$(cat "$MS_PREFIX/share/mediastack/vmaf-version" 2>/dev/null)" != "$VMAF_VERSION" ]]; then
+    "$(dirname "${BASH_SOURCE[0]}")/build-vmaf.sh"
+fi
+
 src="$MS_SRC_ROOT/ffmpeg"
 build="$MS_BUILD_ROOT/ffmpeg"
 mkdir -p "$build"
@@ -16,7 +21,7 @@ args=(
     --disable-doc --disable-debug
     --enable-libplacebo --enable-vulkan   # Vulkan shaders are compiled at build time with glslc
     --enable-ffnvcodec --enable-nvenc --enable-nvdec --enable-cuvid
-    --enable-libass --enable-libdav1d --enable-libx264 --enable-libx265
+    --enable-libass --enable-libdav1d --enable-libx264 --enable-libx265 --enable-libvmaf
 )
 case "$MS_TARGET" in
     ucrt64)

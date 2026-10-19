@@ -84,7 +84,8 @@ This puts the folder **first** on PATH for that window only, ahead of any older 
 
 | Project | Notable options on Windows |
 |---|---|
+| libvmaf | built from source (MSYS2's package lacks the built-in VMAF models) |
 | libplacebo | Vulkan, D3D11, OpenGL, shaderc, lcms2, libdovi |
-| FFmpeg | shared; GPL + nonfree; libplacebo, Vulkan, NVENC/NVDEC/CUVID, CUDA filters (via clang), D3D11VA, DXVA2, QSV (libvpl), AMF, libass, dav1d, x264, x265, lcms2 |
+| FFmpeg | shared; GPL + nonfree; libplacebo, Vulkan, NVENC/NVDEC/CUVID, CUDA filters (via clang), D3D11VA, DXVA2, QSV (libvpl), AMF, libass, dav1d, x264, x265, lcms2, libvmaf |
 | mpv | libmpv; Vulkan, D3D11, ANGLE, D3D hwaccel, AMF, Lua, libarchive, Blu-ray, rubberband |
 | NVEncC | Visual Studio `RelStatic` x64, using the FFmpeg above |

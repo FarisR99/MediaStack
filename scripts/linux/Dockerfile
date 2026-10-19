@@ -17,7 +17,7 @@ ARG LINUX_PREFIX=/opt/mediastack
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential ca-certificates ccache curl file git nasm ninja-build \
+        build-essential ca-certificates ccache curl file git nasm ninja-build xxd \
         patchelf pkg-config python3-pip xz-utils zstd libssl-dev \
         libass-dev libx264-dev libx265-dev liblcms2-dev \
         libluajit-5.1-dev libasound2-dev libpulse-dev \
@@ -73,6 +73,10 @@ RUN --mount=type=cache,target=/ccache --mount=type=cache,target=/build/libdovi \
 COPY scripts/linux/build-dav1d.sh scripts/linux/
 RUN --mount=type=cache,target=/ccache --mount=type=cache,target=/build/dav1d \
     scripts/linux/build-dav1d.sh
+
+COPY scripts/common/build-vmaf.sh scripts/common/
+RUN --mount=type=cache,target=/ccache --mount=type=cache,target=/build/vmaf \
+    scripts/common/build-vmaf.sh
 
 COPY nv-codec-headers nv-codec-headers
 COPY scripts/common/build-nv-codec-headers.sh scripts/common/

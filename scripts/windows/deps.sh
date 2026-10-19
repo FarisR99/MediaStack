@@ -8,7 +8,7 @@ set -euo pipefail
 
 p=mingw-w64-ucrt-x86_64
 pacman -S --needed --noconfirm \
-    git make diffutils patch zstd \
+    git make diffutils patch zstd vim \
     $p-toolchain $p-meson $p-ninja $p-pkgconf $p-nasm $p-ccache $p-python $p-tools-git \
     $p-clang $p-cppwinrt \
     $p-vulkan-headers $p-vulkan-loader $p-shaderc $p-spirv-cross \
