@@ -41,10 +41,11 @@ Open **Developer PowerShell for VS 2022**, `cd` to the repo, then:
 
 This links NVEncC against the FFmpeg you built in step 2. FFmpeg's MinGW build already produces the `.lib` files Visual Studio needs. The script:
 
-1. fills `nvenc\ffmpeg_lgpl\`
-2. builds `NVEncC64.exe`
-3. copies it to `out\ucrt64\nvencc\`
-4. runs a quick `--version` / `--check-avcodec-dll` test
+1. downloads the SDK headers NVEnc needs (AviSynth+, VapourSynth, OpenCL, Vship, ONNX Runtime) into `out\ucrt64\build\nvenc-headers\`, the same ones NVEnc's own release builds use. If you've installed any of those SDKs yourself and set `AVISYNTH_SDK`, `VAPOURSYNTH_SDK`, `OPENCL_HEADERS`, `VSHIP_DIR` or `ONNXRUNTIME_DIR`, yours is used instead
+2. fills `nvenc\ffmpeg_lgpl\`
+3. builds `NVEncC64.exe`
+4. copies it to `out\ucrt64\nvencc\`
+5. runs a quick `--version` / `--check-avcodec-dll` test
 
 If linking fails, or NVEncC crashes at startup, try the fallback, which builds a separate MSVC-native FFmpeg for NVEncC only:
 
@@ -54,7 +55,13 @@ If linking fails, or NVEncC crashes at startup, try the fallback, which builds a
 
 NVEncC has about 90 very large CUDA files. If the build fails with "compiler is out of heap space" or "LLVM error : out of memory", too many of them compiled at once. The script compiles half as many files at a time as you have CPU threads; pass a lower number, e.g. `-Jobs 4`. Rerunning is incremental, so files that already compiled aren't redone.
 
-> **Status:** this step hasn't been run on a real Windows machine yet ("spike"). When you've tried it, note which route worked here, and ask an agent to make it the permanent `build-nvencc.ps1`.
+A first build with `-Jobs 1` takes about 45 minutes; later builds only recompile what changed.
+
+`out\ucrt64\nvencc\` on its own won't start (it needs DLLs from the prefix and from UCRT64). Run `scripts/windows/package.sh` and use `NVEncC64.exe` from `out\ucrt64\dist\`.
+
+`--vpp-onnx` additionally needs ONNX Runtime's GPU DLLs next to `NVEncC64.exe`; they aren't included.
+
+> **Status:** Route A (the default) works: built and tested on Windows 11 with Visual Studio 2022 and CUDA 13.0 in October 2026. Route B hasn't been needed.
 
 ## 4. Package a portable folder
 

@@ -4,7 +4,7 @@ Human version: `docs/building-windows.md`.
 
 You can't run any of this from WSL/Linux. When you change Windows build scripts, check them for bash syntax (`bash -n`), reason carefully about MSYS2 path behaviour, and say in the commit that it's untested on Windows.
 
-**Verified on Windows (2026-10-18, RTX 5090, MSYS2 gcc 16.2):** `deps.sh`, `build.sh`, `package.sh` and `activate.ps1` work. Smoke tests pass from `dist` in plain PowerShell: FFmpeg NVENC encode, mpv `--vf=gpu=api=d3d11:hw-output=yes:hw-format=nv12` straight into hevc_nvenc ("Rendering directly to nv12 hardware frames"), and mpv `--vf=gpu=api=vulkan` into hevc_nvenc. NVEncC (spike) is still unverified. Lessons from that first run:
+**Verified on Windows (2026-10-18, RTX 5090, MSYS2 gcc 16.2):** `deps.sh`, `build.sh`, `package.sh` and `activate.ps1` work. Smoke tests pass from `dist` in plain PowerShell: FFmpeg NVENC encode, mpv `--vf=gpu=api=d3d11:hw-output=yes:hw-format=nv12` straight into hevc_nvenc ("Rendering directly to nv12 hardware frames"), and mpv `--vf=gpu=api=vulkan` into hevc_nvenc. NVEncC: see the spike result below. Lessons from that first run:
 - mpv's `-Dwin32-smtc` needs `cppwinrt` (now in `deps.sh`).
 - pacman's `ffmpeg`/`libplacebo` can't always be removed, because packages like `ffms2` depend on them. That's fine: the stack's DLLs sit next to its exes.
 - Users may have older mpv/FFmpeg on the *Machine* PATH, which beats the User PATH. Don't tell them to edit PATH persistently; use `activate.ps1` (session only).
@@ -13,7 +13,7 @@ You can't run any of this from WSL/Linux. When you change Windows build scripts,
 ## Environments
 
 - **MSYS2 UCRT64 only** (`$MSYSTEM == UCRT64`; package prefix `mingw-w64-ucrt-x86_64-`). This covers nv-codec-headers, libplacebo, FFmpeg and mpv. Every script refuses to run in other MSYS2 environments.
-- **Developer PowerShell for VS 2022** (plus the CUDA Toolkit, `CUDA_PATH`, and optionally `AVISYNTH_SDK`/`VAPOURSYNTH_SDK`) for NVEncC, which upstream builds only with MSVC.
+- **Developer PowerShell for VS 2022** plus the CUDA Toolkit (`CUDA_PATH`; ≤ 13.0, the newest `nvenc/cudaver.props` knows) for NVEncC, which upstream builds only with MSVC. VS 2022 is required in practice: CUDA 13.0's MSBuild integration only targets it. SDK headers are fetched by the script (below).
 
 ## Scripts
 
@@ -31,12 +31,17 @@ You can't run any of this from WSL/Linux. When you change Windows build scripts,
 - The vcxproj adds `..\ffmpeg_lgpl\include` and `..\ffmpeg_lgpl\lib\$(Platform)`. The sources `#pragma comment(lib, "avcodec.lib")` etc. and `dovi.lib`.
 - The post-build step copies `avcodec-*.dll`, `libass-*.dll` and `libplacebo-*.dll` from that folder.
 - At runtime NVEncC expects specific DLL names (`AVCODEC_DLL_NAME` in `nvenc/NVEncCore/rgy_avutil.h`), and loads `libass-9.dll` and `libplacebo-<api>.dll` dynamically.
-- **Route A** (default): FFmpeg's MinGW shared build already installs MSVC-usable import libs (`bin/*.lib`, made by `lib.exe` if it's on PATH, otherwise `dlltool`). The spike copies those, plus DLLs, and makes `dovi.lib` from UCRT64's libdovi DLL (dumpbin → .def → lib.exe). Both use UCRT, so the C ABI matches MSVC.
+- **Route A** (default): FFmpeg's MinGW shared build already installs MSVC-usable import libs (`bin/*.lib`, made by `lib.exe` if it's on PATH, otherwise `dlltool`). The spike copies those, plus DLLs, and makes `dovi.lib` and `hdr10plus-rs.lib` from UCRT64's libdovi and libhdr10plus-rs DLLs (dumpbin → .def → lib.exe). NVEnc `#pragma comment`-links both. Both use UCRT, so the C ABI matches MSVC.
 - **Route B**: needed only if Route A fails to link or crashes. Its FFmpeg lacks the external libs (it's MSVC-built), so NVEncC loses nothing it needs, but its FFmpeg differs from mpv's.
 
 **First spike run (Route A, CUDA 12.8, 24 threads):** it failed before linking, with the compiler running out of memory (`C1060 out of heap space`, `LLVM error : out of memory`, cicc `0xC0000409`, then cascading `C1033 cannot open program database`). The cause was `/m` with `CL_MPCount` = all cores, times nvcc `-t 0` (`CUDA_THREADS` in `nvenc/cudaver.props`) fanning out per architecture. The script now passes `/m:1 /p:CL_MPCount=<Jobs> /p:CUDA_THREADS="-t 1"`, with `-Jobs` defaulting to half the threads. Global properties override cudaver.props, so no nvenc change is needed. Whether the CUDA build customization honours `CL_MPCount` is unconfirmed; `-t 1` alone cuts cicc processes 4×.
 
-**Spike status: Route A not yet past compilation.** When the user reports a result, record the winning route, any errors and any vcxproj changes here and in `docs/building-windows.md`. Commit vcxproj changes on `nvenc` `mediastack`. Then consider renaming the script to `build-nvencc.ps1`.
+**Spike status: Route A works (2026-10-19, SERVER-1, VS 2022 MSVC 14.44, CUDA 13.0, `-Jobs 1`).** No vcxproj changes were needed. A full `-Jobs 1` build takes about 45 minutes; reruns are incremental. Failures on the way, all fixed in the script:
+- `VshipColor.h`, `avisynth_c.h`, `VapourSynth.h` missing: the vcxproj includes `$(AVISYNTH_SDK)`, `$(VAPOURSYNTH_SDK)`, `$(OPENCL_HEADERS)` and `$(VSHIP_DIR)`. NVEnc's release CI fills them from rigaya's `hwenc_headers` bundle; the script fetches the same bundle (`NVENC_HEADERS_URL` in `stack.conf`) into `out/ucrt64/build/nvenc-headers/` for any variable that's unset.
+- `onnxruntime_cxx_api.h` missing: `ONNXRUNTIME_DIR` likewise, from the ONNX Runtime CPU zip (`NVENC_ONNXRUNTIME_URL`), `include/` only. `onnxruntime.dll` is loaded at runtime and isn't bundled, so `--vpp-onnx` needs the user to supply ONNX Runtime's GPU DLLs.
+- `libhdr10plus-rs/hdr10plus.h` missing: UCRT64's `include/hdr10plus.h` is x265's, a different API. `deps.sh` installs `libhdr10plus-rs`, and the spike stages it like libdovi.
+
+`out/ucrt64/nvencc/` isn't self-contained: it lacks the prefix's `swscale`/`libvmaf`/`libplacebo` dependencies and UCRT64's `libdovi`/`libhdr10plus-rs`. Run it from `dist` (`package.sh` resolves them), or with `out\ucrt64\prefix\bin` and `C:\msys64\ucrt64\bin` on PATH. From WSL, a Windows exe only sees a WSL `PATH` with `WSLENV=PATH/l`; otherwise it fails silently with exit 53.
 
 ## Gotchas
 

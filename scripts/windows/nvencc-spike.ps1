@@ -10,7 +10,7 @@
 
   Route A (default): reuse the UCRT64 FFmpeg from out\ucrt64\prefix. FFmpeg's
     MinGW build already emits MSVC-compatible import libs (bin\*.lib); libass,
-    libplacebo and libdovi DLLs come from UCRT64/the prefix. The same DLLs as
+    libplacebo, libdovi and libhdr10plus-rs DLLs come from UCRT64/the prefix. The same DLLs as
     mpv, and FFmpeg is built only once.
   Route B: build a second, minimal FFmpeg with --toolchain=msvc
     (scripts/windows/build-ffmpeg-msvc.sh) into out\msvc\prefix, and use that.
@@ -19,6 +19,10 @@
   Run from a "Developer PowerShell for VS 2022" so cl.exe, lib.exe, dumpbin
   and msbuild are on PATH. Record the route that works in
   docs/building-windows.md and docs/agents/build-windows.md.
+
+  The AviSynth+/VapourSynth/OpenCL/Vship and ONNX Runtime headers are
+  downloaded into out\ucrt64\build\nvenc-headers unless AVISYNTH_SDK,
+  VAPOURSYNTH_SDK, OPENCL_HEADERS, VSHIP_DIR and ONNXRUNTIME_DIR are already set.
 
 .PARAMETER Jobs
   How many source files compile at once (default: half the logical CPUs).
@@ -54,8 +58,44 @@ function Need($cmd) {
 }
 Need cl.exe; Need lib.exe; Need dumpbin.exe; Need msbuild.exe
 if (-not $env:CUDA_PATH) { throw 'CUDA_PATH is not set: install the CUDA Toolkit' }
-foreach ($sdk in 'AVISYNTH_SDK', 'VAPOURSYNTH_SDK') {
-    if (-not (Test-Path "env:$sdk")) { Write-Warning "$sdk is not set; NVEnc's project expects its headers (see docs/building-windows.md)" }
+
+# SDK headers NVEnc's project includes. Its release CI takes AviSynth+,
+# VapourSynth, OpenCL and Vship from rigaya's hwenc_headers bundle; ONNX Runtime
+# is loaded at runtime, so only its include\ is needed. Each URL is in stack.conf;
+# a variable that is already set wins.
+function Get-StackConf([string] $Key) {
+    (Select-String -Path "$Root\stack.conf" -Pattern "^$Key=(.+)$").Matches[0].Groups[1].Value
+}
+# Get-Headers <url> [tar member patterns]: extract once into out\, return the dir.
+function Get-Headers([string] $Url, [string[]] $Members = @()) {
+    $file = [IO.Path]::GetFileName($Url)
+    $dir = Join-Path $Root ('out\ucrt64\build\nvenc-headers\' + [IO.Path]::GetFileNameWithoutExtension($file))
+    if (-not (Test-Path "$dir\.done")) {
+        Write-Host "==> Fetching headers: $Url"
+        Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Force $dir | Out-Null
+        $archive = Join-Path (Split-Path $dir) $file
+        Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $archive
+        & "$env:SystemRoot\System32\tar.exe" -xf $archive -C $dir @Members
+        if ($LASTEXITCODE) { throw "could not extract $archive" }
+        Remove-Item $archive
+        New-Item -ItemType File "$dir\.done" | Out-Null
+    }
+    $dir
+}
+$HeaderDirs = [ordered]@{
+    AVISYNTH_SDK = 'AviSynthPlus\avs_core'; VAPOURSYNTH_SDK = 'vapoursynth'
+    OPENCL_HEADERS = 'openclheaders'; VSHIP_DIR = 'vship'
+}
+if ($HeaderDirs.Keys | Where-Object { -not (Test-Path "env:$_") }) {
+    $hw = Get-Headers (Get-StackConf 'NVENC_HEADERS_URL')
+    foreach ($var in $HeaderDirs.Keys) {
+        if (-not (Test-Path "env:$var")) { Set-Item "env:$var" (Join-Path $hw $HeaderDirs[$var]) }
+    }
+}
+if (-not $env:ONNXRUNTIME_DIR) {
+    $ort = Get-Headers (Get-StackConf 'NVENC_ONNXRUNTIME_URL') '*/include/*'
+    $env:ONNXRUNTIME_DIR = (Get-ChildItem -Directory $ort | Select-Object -First 1).FullName
 }
 
 # New-ImportLib <dll> <out.lib>: MSVC import lib from a DLL's export table.
@@ -88,7 +128,7 @@ Write-Host "==> Staging $Stage"
 Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $StageLib, $StageInc | Out-Null
 Copy-Item -Recurse "$Prefix\include\*" $StageInc
-foreach ($dir in 'ass', 'libdovi') {
+foreach ($dir in 'ass', 'libdovi', 'libhdr10plus-rs') {
     if (Test-Path "$Ucrt\include\$dir") { Copy-Item -Recurse -Force "$Ucrt\include\$dir" $StageInc }
 }
 foreach ($lib in 'avcodec', 'avformat', 'avutil', 'avfilter', 'avdevice', 'swresample', 'swscale') {
@@ -99,12 +139,14 @@ foreach ($lib in 'avcodec', 'avformat', 'avutil', 'avfilter', 'avdevice', 'swres
 Copy-Item "$Ucrt\bin\libass-9.dll" $StageLib
 $placebo = Get-ChildItem "$Root\out\ucrt64\prefix\bin\libplacebo-*.dll" -ErrorAction SilentlyContinue
 if ($placebo) { Copy-Item $placebo.FullName $StageLib } else { Write-Warning 'libplacebo DLL not found; libplacebo filters will be unavailable' }
-# NVEnc links dovi.lib (#pragma comment); point it at UCRT64's libdovi DLL.
-$dovi = Get-ChildItem "$Ucrt\bin\*dovi*.dll" | Select-Object -First 1
-if ($dovi) {
-    New-ImportLib $dovi.FullName (Join-Path $StageLib 'dovi.lib')
-    Copy-Item $dovi.FullName $StageLib
-} else { Write-Warning 'libdovi DLL not found in UCRT64 (pacman -S mingw-w64-ucrt-x86_64-libdovi)' }
+# NVEnc links dovi.lib and hdr10plus-rs.lib (#pragma comment); point them at
+# UCRT64's DLLs (scripts/windows/deps.sh installs both).
+foreach ($rs in @{ lib = 'dovi.lib'; dll = 'libdovi.dll' }, @{ lib = 'hdr10plus-rs.lib'; dll = 'libhdr10plus-rs.dll' }) {
+    $dll = Join-Path "$Ucrt\bin" $rs.dll
+    if (-not (Test-Path $dll)) { throw "$dll missing: run scripts/windows/deps.sh" }
+    New-ImportLib $dll (Join-Path $StageLib $rs.lib)
+    Copy-Item $dll $StageLib
+}
 
 Write-Host "==> MSBuild NVEncC ($Configuration|x64, $Jobs jobs)"
 # One project at a time, $Jobs files at a time, and nvcc without -t 0

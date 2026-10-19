@@ -12,9 +12,9 @@ This page takes you from nothing to a working checkout on a new machine.
 
 - **[MSYS2](https://www.msys2.org/)**, installed to `C:\msys64`. Always use the **MSYS2 UCRT64** shell for MediaStack; the scripts refuse to run in the other MSYS2 shells.
 - **For NVEncC only:**
-  - **Visual Studio 2022** with the "Desktop development with C++" workload
-  - the **CUDA Toolkit** (it sets `CUDA_PATH`)
-  - optionally the AviSynth+ and VapourSynth SDKs, which NVEnc's project expects (`AVISYNTH_SDK`, `VAPOURSYNTH_SDK` environment variables)
+  - **Visual Studio 2022** with the "Desktop development with C++" workload. Not a newer Visual Studio: CUDA 13.0 only integrates with 2022.
+  - the **CUDA Toolkit 13.0** (it sets `CUDA_PATH`). Newer versions aren't recognised by NVEnc's project yet. In the installer choose *Custom* and untick the driver, so it doesn't replace your newer one.
+  - nothing else: the build script downloads the other SDK headers NVEnc needs
 - An NVIDIA driver new enough for the pinned nv-codec-headers version (see [troubleshooting](troubleshooting.md#nvenc-says-the-driver-is-too-old)).
 
 ### Linux / WSL hosts
