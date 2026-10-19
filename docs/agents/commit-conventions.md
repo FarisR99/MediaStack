@@ -28,3 +28,7 @@ The user's own commits don't need the prefix. Never rewrite them.
 ## mpv specifics
 
 mpv's `ci/lint-commit-msg.py` enforces upstream's format (`area: summary`, line lengths). The fork's `AI: ` prefix is a deliberate deviation for fork-only commits. Keep the rest of the message lint-clean, so the commit can be upstreamed by dropping the prefix.
+
+## Staging in the superrepo
+
+Stage paths explicitly (`git add <paths>`). Never use `git commit -a` / `-am` in the superrepo: it also stages any moved submodule gitlinks, which hides a pin bump inside an unrelated commit. That happened once (`787beac` carried an mpv bump). Pin changes go through `scripts/bump.sh`.
