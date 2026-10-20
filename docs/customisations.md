@@ -20,6 +20,13 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
   - With `api=vulkan` (Windows and Linux) they're Vulkan images, for `hevc_vulkan`, or for NVENC through a GPU-side copy into CUDA. On Linux this is the only way to avoid the download. On an RTX 5090 with Anime4K (1080p → 4K, 20 s clip), Vulkan into NVENC ran at about 168 fps, against 150 when downloading and 210 with D3D11; Vulkan into `hevc_vulkan` ran at about 158 fps.
   - With `hw-format=nv12`, the conversion to YUV happens on the GPU: BT.709, or BT.2020 for HDR, limited range, correctly sited chroma. This gives better colour than letting the encoder convert.
 - **Faster encoding from software frames:** the filter reads finished frames back from the GPU in the background while it renders the next ones, instead of waiting for each download. With Vulkan this used to be most of the frame time.
+- **RTX Video HDR (TrueHDR) while encoding:** `--vf=gpu=api=vulkan:truehdr=yes` turns SDR into HDR10 with NVIDIA's AI SDR-to-HDR conversion, after Anime4K or any other shaders. The output is 10-bit BT.2020 PQ, so pair it with a 10-bit encoder profile such as `--ovcopts=profile=main10`. `truehdr-contrast`, `truehdr-saturation`, `truehdr-middle-gray` and `truehdr-max-luma` tune it, with the same defaults and ranges as NVEncC's `--vpp-ngx-truehdr`, and the output matches NVEncC's closely (51 dB luma PSNR on the same clip). Windows and RTX GPUs only. Copy `NVEncNVSDKNGX.dll`, `nvngx_truehdr.dll` and `cudart64_12.dll` from an NVEncC release next to `mpv.exe`; MediaStack doesn't build or ship them. On an RTX 5090, Anime4K 1080p → 4K into NVENC ran at 99 fps with TrueHDR, against 123 without (10 s clips).
+
+  ```powershell
+  mpv in.mkv --glsl-shaders=Anime4K.glsl --vf=gpu=api=vulkan:w=3840:h=2160:truehdr=yes `
+    --o=out.mkv --ovc=hevc_nvenc --ovcopts=preset=p5,tune=hq,rc=constqp,qp=22,profile=main10,split_encode_mode=3
+  ```
+- **10-bit output:** `hw-format=p010` and `sw-format=p010` work like `nv12`, but with 10 bits per sample.
 - **Smaller, correctly coloured downloads:** when the encoder accepts NV12, the filter converts frames to NV12 on the GPU before reading them back. That's under half the data of RGB, and avoids the encoder's own BT.601 conversion.
 - **Persistent shader cache** for the filter, so start-up is faster on repeat runs.
 - **Stability fixes:** context set-up and teardown, subtitle state, device options, OpenGL readback. `--vf=gpu=api=vulkan` no longer crashes on machines without a working Vulkan driver; it reports an error instead. That fix would also suit upstream mpv.

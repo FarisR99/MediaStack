@@ -22,7 +22,7 @@ The source of truth for this doc is `agents/mpv/AGENTS.md` in the MediaStack sup
 
 | Area | Files |
 |---|---|
-| GPU filter (render with the VO renderer inside the filter chain) | `video/filter/vf_gpu.c`, `vf_gpu.h`, `vf_gpu_vulkan.c`, `vf_gpu_d3d11.c`, `vf_gpu_angle.c`, `vf_gpu_egl.c` |
+| GPU filter (render with the VO renderer inside the filter chain) | `video/filter/vf_gpu.c`, `vf_gpu.h`, `vf_gpu_vulkan.c`, `vf_gpu_d3d11.c`, `vf_gpu_angle.c`, `vf_gpu_egl.c`, `vf_gpu_ngx.c` (TrueHDR) |
 | Encoder output / hw frame negotiation | `video/out/vo_lavc.c`, `common/encode_lavc.c` |
 | libplacebo RA glue | `video/out/placebo/ra_pl.c`, `ra_pl.h` |
 | OpenGL readback | `video/out/opengl/` |
@@ -37,7 +37,7 @@ Fork-only commits (`git log --oneline upstream/master..master --no-merges` lists
 - **Hardware output for encoding:**
   - `hw-output=<auto|yes|no>`: D3D11 or Vulkan frames go straight to the encoder; auto turns it on for encoders that accept them.
   - Vulkan (`vf_gpu_vulkan.c` `get_hw_frame`/`end_hw_frame`): FFmpeg Vulkan frames on libplacebo's own device, handed to libplacebo and back with the frame's timeline semaphore, like `hwdec_vulkan`. The FFmpeg device's `free` callback owns the `mpvk_ctx`, so encoders can outlive the filter. Two layouts (`offscreen_ctx.num_hw_layouts`): multi-planar for `*_vulkan` encoders, one image per plane (`AV_VK_FRAME_FLAG_DISABLE_MULTIPLANE`) for CUDA. `vo_lavc` copies Vulkan → CUDA for NVENC (`transfer_frames`). BGRA renders through a `B8G8R8A8` view, because FFmpeg stores BGRA in `R8G8B8A8` images. `mppl_create_vulkan` requests video encode extensions and queues.
-  - `hw-format=<auto|nv12|bgra>`: GPU NV12 conversion with BT.709 (BT.2020 for BT.2020 primaries), limited range and left-sited chroma.
+  - `hw-format=<auto|nv12|p010|bgra>`: GPU NV12/P010 conversion with BT.709 (BT.2020 for BT.2020 primaries), limited range and left-sited chroma.
   - Frames are flushed instead of finished.
   - D3D11 frames are mapped to QSV encoders.
   - NVENC RGB input is tagged BT.601.
@@ -50,7 +50,8 @@ Fork-only commits (`git log --oneline upstream/master..master --no-merges` lists
   - framebuffer readback without `glReadBuffer`
   - `ra_pl` clears without blit support
 - **Faster software readback:** `vf_gpu` downloads software output frames asynchronously, when the GPU supports downloading into buffers. It renders into a ring of targets, downloads each into a persistent buffer, and reads it back only after up to two later frames have been submitted, so rendering overlaps the download.
-- **NV12 software output:** `sw-format=<auto|nv12|rgb>` (`DOCS/man/vf.rst`). With async downloads, the GPU converts to NV12, as it does for NV12 hw frames, and both planes are downloaded: 1.5 instead of 4 bytes per pixel, and no BT.601 conversion in NVENC. auto picks NV12 when the encoder accepts it.
+- **NV12 software output:** `sw-format=<auto|nv12|p010|rgb>` (`DOCS/man/vf.rst`). With async downloads, the GPU converts to NV12, as it does for NV12 hw frames, and both planes are downloaded: 1.5 instead of 4 bytes per pixel, and no BT.601 conversion in NVENC. auto picks NV12 when the encoder accepts it. `p010` is the 10-bit form.
+- **RTX Video TrueHDR:** `truehdr=yes` plus `truehdr-contrast/-saturation/-middle-gray/-max-luma` (`vf_gpu_ngx.c`, meson feature `vf-gpu-ngx`: Windows + Vulkan + cuda-interop). gl_video renders into an RGBA8 texture exported to CUDA; NVEncNVSDKNGX.dll (loaded at runtime, needs nvngx_truehdr.dll and cudart64_12.dll beside mpv.exe) writes RGBA16F linear light (1.0 = 100 nits, verified against NVEncC to 51 dB) into a second shared texture; `render_yuv` converts it to BT.2020 PQ P010 via a `color_adjustment.contrast` scale. Vulkan↔CUDA sync uses timeline semaphores (hold/release with `VK_QUEUE_FAMILY_EXTERNAL`), as `hwdec_cuda_vk.c` does. Output is always P010; hw-format/sw-format must be unset. FreeLibrary on destroy resets the DLL's once-per-process NGX init. No HDR10 mastering metadata is written. **Never mention NVEncC in mpv's own docs, messages or comments.**
 - **Upstreamable fixes:** `vf_gpu_vulkan` no longer crashes when Vulkan context creation fails (the destructor ran with `priv` unset). Upstream mpv has the same bug.
 - **Repo/CI:** Vulkan is a required dependency. macOS/FreeBSD/OpenBSD CI is removed, and MSYS2 builds are uploaded. Local build scripts are gitignored.
 
