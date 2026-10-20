@@ -35,7 +35,8 @@ Fork-only commits (`git log --oneline upstream/master..master --no-merges` lists
 
 - **vf_gpu backends:** `vf_gpu_vulkan` (uses `--vulkan-device`, allows software Vulkan devices), `vf_gpu_angle` and `vf_gpu_d3d11` (Windows). libplacebo frame dropping is disabled explicitly. D3D11 scaling is skipped at scale 1. The vf=gpu warning is hidden.
 - **Hardware output for encoding:**
-  - `hw-output=<auto|yes|no>`: D3D11 frames go straight to the encoder; auto turns it on for encoders that accept them.
+  - `hw-output=<auto|yes|no>`: D3D11 or Vulkan frames go straight to the encoder; auto turns it on for encoders that accept them.
+  - Vulkan (`vf_gpu_vulkan.c` `get_hw_frame`/`end_hw_frame`): FFmpeg Vulkan frames on libplacebo's own device, handed to libplacebo and back with the frame's timeline semaphore, like `hwdec_vulkan`. The FFmpeg device's `free` callback owns the `mpvk_ctx`, so encoders can outlive the filter. Two layouts (`offscreen_ctx.num_hw_layouts`): multi-planar for `*_vulkan` encoders, one image per plane (`AV_VK_FRAME_FLAG_DISABLE_MULTIPLANE`) for CUDA. `vo_lavc` copies Vulkan → CUDA for NVENC (`transfer_frames`). BGRA renders through a `B8G8R8A8` view, because FFmpeg stores BGRA in `R8G8B8A8` images. `mppl_create_vulkan` requests video encode extensions and queues.
   - `hw-format=<auto|nv12|bgra>`: GPU NV12 conversion with BT.709 (BT.2020 for BT.2020 primaries), limited range and left-sited chroma.
   - Frames are flushed instead of finished.
   - D3D11 frames are mapped to QSV encoders.

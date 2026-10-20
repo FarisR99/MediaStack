@@ -17,9 +17,10 @@ FFmpeg's own `vf_libplacebo` and the NVENC/NVDEC/CUVID support are built in too,
                       libplacebo (shaders, Vulkan / D3D11 / OpenGL)
                          ▲                 ▲                 ▲
  input ─ FFmpeg demux/decode ─► mpv vf_gpu ┘                 │
-                                   │ RGB, or D3D11 NV12/BGRA hw frames (Windows: hw-output, hw-format)
+                                   │ RGB/NV12, or NV12/BGRA hw frames (hw-output, hw-format):
+                                   │ D3D11 (Windows) or Vulkan (+ copy to CUDA for NVENC)
                                    ▼                         │
-                          mpv vo_lavc ─► FFmpeg encoder (hevc_nvenc, *_qsv, ...)
+                          mpv vo_lavc ─► FFmpeg encoder (hevc_nvenc, *_qsv, *_vulkan, ...)
                                                              │
  input ─ FFmpeg demux/decode (libav* DLLs/.so) ─► NVEncC ────┘ dlopen("libplacebo-<api>.dll" / "libplacebo.so.<api>")
                                                    └─► NVENC via NVENC SDK + CUDA
@@ -41,7 +42,7 @@ FFmpeg's own `vf_libplacebo` and the NVENC/NVDEC/CUVID support are built in too,
 ## Platform specifics
 
 - **Windows (UCRT64):** mpv uses `vf_gpu` `api=d3d11` (libplacebo D3D11) with `hw-output` → D3D11 frames → NVENC/QSV with no download. libplacebo is built with `d3d11=enabled`, both for mpv and because NVEncC's Windows filters call `pl_d3d11_*`. NVEncC is an MSVC build that links FFmpeg through `nvenc/ffmpeg_lgpl/`; see `build-windows.md`.
-- **Linux (Docker, Ubuntu 22.04):** mpv uses `vf_gpu` `api=vulkan` or `egl`; the D3D11 hardware output isn't available. NVEncC is built with meson, and its libplacebo filters use Vulkan.
+- **Linux (Docker, Ubuntu 22.04):** mpv uses `vf_gpu` `api=vulkan` or `egl`. Hardware output works with `api=vulkan` only. `vf_gpu_vulkan` wraps libplacebo's VkDevice as an FFmpeg device, which then owns it, so encoders can hold frames past the filter's teardown. `vo_lavc` passes the frames to `*_vulkan` encoders directly, and copies them on the GPU to CUDA for NVENC (`av_hwframe_transfer_data`). CUDA can only import one-image-per-plane frames (`AV_VK_FRAME_FLAG_DISABLE_MULTIPLANE`, the FFmpeg fork's host-transfer fix), while Vulkan encoders need multi-planar ones, so the filter offers both layouts and the encoder picks. NVEncC is built with meson, and its libplacebo filters use Vulkan.
 - **WSL2:** CUDA, NVENC and NVDEC work through `/usr/lib/wsl/lib` (`libcuda`, `libnvcuvid`, `libnvidia-encode`). There is **no NVIDIA Vulkan ICD** in WSL:
   - Vulkan falls back to Mesa (lavapipe/dzn, from `mesa-vulkan-drivers`). mpv `vf_gpu` and FFmpeg `vf_libplacebo` run on it (verified), slowly.
   - NVEncC's Linux libplacebo filters need CUDA↔Vulkan interop on an NVIDIA Vulkan device, so they **cannot** work in WSL ("vulkan device not set").

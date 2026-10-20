@@ -63,4 +63,11 @@ From the portable folder (`out\ucrt64\dist`) in a normal Command Prompt or Power
 .\NVEncC64.exe -i nvenc.mkv --codec hevc --vpp-resize libplacebo-spline36 --output-res 2560x1440 -o nvencc-pl.mkv
 ```
 
-In mpv's `-v` output, look for the filter reporting D3D11 hardware output. When it's working there's no `download` step.
+In mpv's `-v` output, look for `Rendering directly to nv12 hardware frames`. When it's working there's no `Downloading` line.
+
+The same with Vulkan (works on Linux too), into NVENC and into FFmpeg's Vulkan encoder:
+
+```powershell
+.\mpv.com --no-config nvenc.mkv --vf=gpu=api=vulkan:hw-output=yes:hw-format=nv12 --o=mpv-vk.mkv --ovc=hevc_nvenc -v
+.\mpv.com --no-config nvenc.mkv --vf=gpu=api=vulkan:hw-output=yes:hw-format=nv12 --o=mpv-vkenc.mkv --ovc=hevc_vulkan -v
+```

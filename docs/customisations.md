@@ -14,8 +14,10 @@ git -C ffmpeg log --oneline --no-merges upstream/master..mediastack
 The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter renders frames with libplacebo, the same renderer `--vo=gpu-next` uses, inside the filter chain. mpv's encoding mode then encodes them, typically with NVENC.
 
 - **More rendering back ends for `--vf=gpu`:** Vulkan (including software Vulkan devices, picked with `--vulkan-device`), Direct3D 11, and ANGLE on Windows.
-- **Zero-copy hardware encoding on Windows.**
-  - With `hw-output`, frames stay on the GPU as D3D11 textures and go straight to NVENC or Intel QSV encoders, instead of being downloaded to system memory and uploaded again.
+- **Hardware encoding without downloads.**
+  - With `hw-output`, frames stay on the GPU and go straight to the encoder, instead of being downloaded to system memory and uploaded again.
+  - With `api=d3d11` (Windows) they're D3D11 textures, for NVENC or Intel QSV. This is the fastest way to encode with mpv.
+  - With `api=vulkan` (Windows and Linux) they're Vulkan images, for `hevc_vulkan`, or for NVENC through a GPU-side copy into CUDA. On Linux this is the only way to avoid the download. On an RTX 5090 with Anime4K (1080p → 4K, 20 s clip), Vulkan into NVENC ran at about 168 fps, against 150 when downloading and 210 with D3D11; Vulkan into `hevc_vulkan` ran at about 158 fps.
   - With `hw-format=nv12`, the conversion to YUV happens on the GPU: BT.709, or BT.2020 for HDR, limited range, correctly sited chroma. This gives better colour than letting the encoder convert.
 - **Faster encoding from software frames:** the filter reads finished frames back from the GPU in the background while it renders the next ones, instead of waiting for each download. With Vulkan this used to be most of the frame time.
 - **Smaller, correctly coloured downloads:** when the encoder accepts NV12, the filter converts frames to NV12 on the GPU before reading them back. That's under half the data of RGB, and avoids the encoder's own BT.601 conversion.
