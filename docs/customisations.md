@@ -1,6 +1,6 @@
 # What's customised
 
-What each fork changes compared to upstream, and why. Keep this up to date as features land; it's the first thing to read when an upstream merge conflicts.
+What each fork changes compared to upstream, and why. For how much faster this makes Anime4K upscaling, see [Benchmarks](benchmarks.md). Keep this up to date as features land; it's the first thing to read when an upstream merge conflicts.
 
 To list a fork's own commits:
 

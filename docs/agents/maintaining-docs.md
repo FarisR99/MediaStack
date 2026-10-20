@@ -24,3 +24,8 @@ It's loaded on every prompt, so keep it short: repo map, golden rules, router, q
 ## Upstream docs inside submodules
 
 nvenc ships its own `CLAUDE.md`/`AGENTS.md` (in Japanese). Read them for NVEnc's internal conventions. Never edit them for our purposes, because they belong to upstream.
+
+## Human doc index and benchmarks
+
+- `docs/README.md` lists every human doc (not `docs/agents/`). When you add, rename or remove a `docs/*.md` page, update it in the same commit.
+- `docs/benchmarks.md` holds the original-vs-fork numbers. When a change affects Anime4K upscaling speed in a fork, rerun the comparison as described in its "How these were measured" section (median of 3, same clip and settings) and update the tables, rather than adding numbers measured differently. Upstream mpv for the comparison is built from `git -C mpv archive upstream/master` into `out/ucrt64/src/mpv-upstream` with `build-mpv.sh`'s options, and run next to a copy of `dist`'s DLLs.

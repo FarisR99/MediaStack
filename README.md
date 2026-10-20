@@ -32,12 +32,14 @@ scripts/linux/export.sh && sudo scripts/linux/install-host.sh
 
 ## Docs
 
+All the docs are listed in [docs/README.md](docs/README.md). The main ones:
+
 - [Getting started](docs/getting-started.md): prerequisites and first clone
 - [Building on Windows](docs/building-windows.md)
 - [Building on Linux](docs/building-linux.md)
 - [Daily workflow](docs/daily-workflow.md): changing a project, committing, pushing
 - [Updating from upstream](docs/updating-upstream.md)
-- [What's customised](docs/customisations.md)
+- [What's customised](docs/customisations.md) · [Benchmarks](docs/benchmarks.md): up to 3.5× faster Anime4K 4K upscaling than the originals
 - [Testing](docs/testing.md) · [Troubleshooting](docs/troubleshooting.md) · [Licensing](docs/licensing.md)
 
 ---
