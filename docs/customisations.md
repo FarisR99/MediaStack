@@ -52,6 +52,14 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
   ```
 
   To decode with NVDEC instead: `-init_hw_device cuda=cu -init_hw_device vulkan=vk@cu -filter_hw_device vk -hwaccel cuda -hwaccel_output_format cuda`, with `hwupload,` at the start of `-vf`.
+- **RTX Video HDR (TrueHDR):** the new `truehdr_cuda` filter turns SDR into HDR10 with NVIDIA's AI SDR-to-HDR conversion, on the GPU, and its output goes straight into NVENC. It writes HDR10 mastering-display and light-level metadata too, which mpv's version doesn't. Same options and defaults as mpv's `truehdr` and NVEncC's `--vpp-ngx-truehdr`; the output matches NVEncC's to 51 dB. Windows and RTX GPUs only; copy `NVEncNVSDKNGX.dll`, `nvngx_truehdr.dll` and `cudart64_12.dll` from an NVEncC release next to `ffmpeg.exe`. On an RTX 5090, Anime4K 1080p → 4K into NVENC ran at 113 fps with TrueHDR, against 132 without (10 s clips).
+
+  ```powershell
+  ffmpeg -init_hw_device vulkan=vk:0,disable_multiplane=1 -filter_hw_device vk `
+    -hwaccel vulkan -hwaccel_output_format vulkan -i in.mkv `
+    -vf "libplacebo=w=3840:h=2160:format=rgba:custom_shader_path=Anime4K.glsl,hwupload=derive_device=cuda,truehdr_cuda=max_luma=1000" `
+    -c:v hevc_nvenc -preset p5 -tune hq -rc vbr -cq 22 -split_encode_mode 3 -profile:v main10 out.mkv
+  ```
 - **No waiting when frames go to CUDA.** When handing a Vulkan frame to CUDA, upstream waits on the CPU until the GPU has finished drawing it, twice per frame. CUDA already waits for the frame on the GPU, so the fork skips those waits and FFmpeg can prepare the next frame meanwhile. With the libplacebo changes below, Anime4K 1080p → 4K into NVENC went from about 188 to 233 fps.
 
 ## libplacebo
