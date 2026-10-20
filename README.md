@@ -39,7 +39,7 @@ All the docs are listed in [docs/README.md](docs/README.md). The main ones:
 - [Building on Linux](docs/building-linux.md)
 - [Daily workflow](docs/daily-workflow.md): changing a project, committing, pushing
 - [Updating from upstream](docs/updating-upstream.md)
-- [What's customised](docs/customisations.md) · [Benchmarks](docs/benchmarks.md): up to 4× faster Anime4K 4K upscaling than the originals
+- [What's customised](docs/customisations.md) · [Benchmarks](docs/benchmarks.md): up to 300% faster Anime4K 4K upscaling than the originals
 - [Testing](docs/testing.md) · [Troubleshooting](docs/troubleshooting.md) · [Licensing](docs/licensing.md)
 
 ---

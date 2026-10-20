@@ -8,8 +8,8 @@ Split encoding on (NVENC encodes each frame on all three of the RTX 5090's encod
 
 | Tool | Original | fps | MediaStack | fps | Change |
 |---|---|---:|---|---:|---:|
-| mpv | upstream `vf=gpu=api=vulkan` | 61.8 | `vf=gpu=api=d3d11`, `hw-output` | **247.8** | **4.0×** |
-| mpv | upstream `vf=gpu=api=vulkan` | 61.8 | `vf=gpu=api=vulkan`, `hw-output` | 223.9 | 3.6× |
+| mpv | upstream `vf=gpu=api=vulkan` | 61.8 | `vf=gpu=api=d3d11`, `hw-output` | **247.8** | **+301%** |
+| mpv | upstream `vf=gpu=api=vulkan` | 61.8 | `vf=gpu=api=vulkan`, `hw-output` | 223.9 | +262% |
 | FFmpeg | `libplacebo` → copy to RAM → `hevc_nvenc` | 155.7 | `libplacebo` → CUDA → `hevc_nvenc` | **231.9** | +49% |
 | NVEncC | rigaya's 9.38 release | 166.1 | MediaStack build | **201.9** | +22% |
 
