@@ -12,7 +12,7 @@ pacman -S --needed --noconfirm \
     $p-toolchain $p-meson $p-ninja $p-pkgconf $p-nasm $p-ccache $p-python $p-tools-git \
     $p-clang $p-cppwinrt \
     $p-vulkan-headers $p-vulkan-loader $p-shaderc $p-spirv-cross \
-    $p-lcms2 $p-libdovi $p-libhdr10plus-rs $p-libass $p-dav1d $p-x264 $p-x265 $p-libvpl $p-amf-headers \
+    $p-lcms2 $p-libdovi $p-libhdr10plus-rs $p-libass $p-dav1d $p-x264 $p-x265 $p-svt-av1 $p-libvpl $p-amf-headers \
     $p-luajit $p-angleproject $p-libjpeg-turbo $p-libarchive $p-libbluray \
     $p-uchardet $p-rubberband
 

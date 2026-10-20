@@ -74,6 +74,10 @@ COPY scripts/linux/build-dav1d.sh scripts/linux/
 RUN --mount=type=cache,target=/ccache --mount=type=cache,target=/build/dav1d \
     scripts/linux/build-dav1d.sh
 
+COPY scripts/linux/build-svtav1.sh scripts/linux/
+RUN --mount=type=cache,target=/ccache --mount=type=cache,target=/build/svtav1 \
+    scripts/linux/build-svtav1.sh
+
 COPY scripts/common/build-vmaf.sh scripts/common/
 RUN --mount=type=cache,target=/ccache --mount=type=cache,target=/build/vmaf \
     scripts/common/build-vmaf.sh

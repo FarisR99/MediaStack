@@ -69,7 +69,7 @@ To install on another machine, copy the `.tar.zst` file and the `scripts/` folde
 |---|---|
 | dav1d, libdovi, libvmaf | built from source; Ubuntu 22.04's versions are too old or missing |
 | libplacebo | Vulkan, OpenGL, shaderc, lcms2, libdovi |
-| FFmpeg | shared; GPL + nonfree; libplacebo, Vulkan, NVENC/NVDEC/CUVID, CUDA filters (nvcc), libass, dav1d, x264, x265, libvmaf |
+| FFmpeg | shared; GPL + nonfree; libplacebo, Vulkan, NVENC/NVDEC/CUVID, CUDA filters (nvcc), libass, dav1d, x264, x265, SVT-AV1, libvmaf |
 | mpv | libmpv; Vulkan, EGL/OpenGL, X11, CUDA hwaccel, ALSA, PulseAudio, Lua |
 | NVEncC | libplacebo filters (Vulkan), libass, libdovi; no VapourSynth/AviSynth readers |
 

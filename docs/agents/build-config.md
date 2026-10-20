@@ -20,7 +20,7 @@ Per-platform differences go in the `case "$MS_TARGET"` block of the same script.
 ## FFmpeg policy
 
 - `--enable-gpl --enable-version3 --enable-nonfree`, shared libs, no static.
-- Always on: `libplacebo vulkan ffnvcodec nvenc nvdec cuvid libass libdav1d libx264 libx265 libvmaf`.
+- Always on: `libplacebo vulkan ffnvcodec nvenc nvdec cuvid libass libdav1d libx264 libx265 libsvtav1 libvmaf`. SVT-AV1 is MSYS2's on Windows and a source build (`SVTAV1_VERSION`, `scripts/linux/build-svtav1.sh`) on Linux.
 - Linux: `cuda-nvcc` (nonfree) when nvcc exists.
 - Windows: `d3d11va dxva2 libvpl amf cuda-llvm lcms2`.
 - `--enable-libnpp` was removed upstream. Don't add it back.

@@ -15,7 +15,7 @@ The scripts, docs and configuration in this repository are under the [MIT licens
 | nv-codec-headers | MIT |
 | x264, x265 | GPL 2+ |
 | libass, dav1d, libdovi | ISC, BSD-2-Clause, MIT |
-| libvmaf | BSD-2-Clause-Patent |
+| libvmaf, SVT-AV1 | BSD-2-Clause-Patent; SVT-AV1 also has AOMedia's patent licence |
 
 ## Why the builds are "personal use only"
 

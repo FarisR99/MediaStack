@@ -21,7 +21,7 @@ args=(
     --disable-doc --disable-debug
     --enable-libplacebo --enable-vulkan   # Vulkan shaders are compiled at build time with glslc
     --enable-ffnvcodec --enable-nvenc --enable-nvdec --enable-cuvid
-    --enable-libass --enable-libdav1d --enable-libx264 --enable-libx265 --enable-libvmaf
+    --enable-libass --enable-libdav1d --enable-libx264 --enable-libx265 --enable-libsvtav1 --enable-libvmaf
 )
 case "$MS_TARGET" in
     ucrt64)

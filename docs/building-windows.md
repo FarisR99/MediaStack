@@ -12,7 +12,7 @@ Open **MSYS2 UCRT64** from the Start menu, `cd` to the repo (e.g. `cd /c/src/Med
 scripts/windows/deps.sh
 ```
 
-This installs compilers, meson and the libraries the stack uses (Vulkan, shaderc, libass, dav1d, x264/x265, libvpl, ANGLE, ...). It does **not** install pacman's own FFmpeg or libplacebo, because MediaStack builds its own. If you already have those packages installed, the script warns you. Removing them avoids confusion (`pacman -R mingw-w64-ucrt-x86_64-ffmpeg mingw-w64-ucrt-x86_64-libplacebo`), but builds work either way.
+This installs compilers, meson and the libraries the stack uses (Vulkan, shaderc, libass, dav1d, x264/x265, SVT-AV1, libvpl, ANGLE, ...). It does **not** install pacman's own FFmpeg or libplacebo, because MediaStack builds its own. If you already have those packages installed, the script warns you. Removing them avoids confusion (`pacman -R mingw-w64-ucrt-x86_64-ffmpeg mingw-w64-ucrt-x86_64-libplacebo`), but builds work either way.
 
 ## 2. Build
 
@@ -93,6 +93,6 @@ This puts the folder **first** on PATH for that window only, ahead of any older 
 |---|---|
 | libvmaf | built from source (MSYS2's package lacks the built-in VMAF models) |
 | libplacebo | Vulkan, D3D11, OpenGL, shaderc, lcms2, libdovi |
-| FFmpeg | shared; GPL + nonfree; libplacebo, Vulkan, NVENC/NVDEC/CUVID, CUDA filters (via clang), D3D11VA, DXVA2, QSV (libvpl), AMF, libass, dav1d, x264, x265, lcms2, libvmaf |
+| FFmpeg | shared; GPL + nonfree; libplacebo, Vulkan, NVENC/NVDEC/CUVID, CUDA filters (via clang), D3D11VA, DXVA2, QSV (libvpl), AMF, libass, dav1d, x264, x265, SVT-AV1, lcms2, libvmaf |
 | mpv | libmpv; Vulkan, D3D11, ANGLE, D3D hwaccel, AMF, Lua, libarchive, Blu-ray, rubberband |
 | NVEncC | Visual Studio `RelStatic` x64, using the FFmpeg above |
