@@ -4,7 +4,9 @@ What the forks gain over the original projects when upscaling anime from 1080p t
 
 ## Results
 
-Split encoding on (NVENC encodes each frame on all three of the RTX 5090's encoders), shader cache warm:
+### Typical run (warm shader cache, split encoding on)
+
+Shaders are already compiled, and NVENC encodes each frame on all three of the RTX 5090's encoders. This is what you get from the second run onwards with the recommended settings below.
 
 | Tool | Original | fps | MediaStack | fps | Change |
 |---|---|---:|---|---:|---:|
@@ -13,16 +15,31 @@ Split encoding on (NVENC encodes each frame on all three of the RTX 5090's encod
 | FFmpeg | `libplacebo` → copy to RAM → `hevc_nvenc` | 155.7 | `libplacebo` → CUDA → `hevc_nvenc` | **231.9** | +49% |
 | NVEncC | rigaya's 9.38 release | 166.1 | MediaStack build | **201.9** | +22% |
 
-The same setups with a cold shader cache (split encoding still on), and with split encoding off (warm cache):
-
-| Tool | Cold cache + split on: original | Cold cache + split on: MediaStack | Change | Split off: original | Split off: MediaStack | Change |
-|---|---:|---:|---:|---:|---:|---:|
-| mpv (d3d11 `hw-output`) | – (not supported) | 208.7 | +230% vs upstream Vulkan | – (not supported) | 104.7 | +68% vs upstream Vulkan |
-| mpv (vulkan `hw-output`) | 63.3 | 213.7 | +238% | 62.2 | 105.6 | +70% |
-| FFmpeg | 146.2 | 229.9 | +57% | 102.3 | 105.5 | +3% |
-| NVEncC | 155.9 | 183.9 | +18% | 89.3 | 99.4 | +11% |
-
 On 90 seconds of the same episode with a faster encoder setting (P1, 10-bit output), NVEncC went from 218 fps (release) to 314 fps (+44%).
+
+### First run (cold shader cache)
+
+The first time a shader is used, or after clearing the cache, it has to be compiled before encoding starts. Split encoding on.
+
+| Tool | Original fps | MediaStack fps | Change |
+|---|---:|---:|---:|
+| mpv (d3d11 `hw-output`) | – (not supported) | 208.7 | +230% vs upstream Vulkan |
+| mpv (vulkan `hw-output`) | 63.3 | 213.7 | +238% |
+| FFmpeg | 146.2 | 229.9 | +57% |
+| NVEncC | 155.9 | 183.9 | +18% |
+
+### Without split encoding
+
+For GPUs with a single NVENC encoder, or with split encoding turned off. Shader cache warm.
+
+| Tool | Original fps | MediaStack fps | Change |
+|---|---:|---:|---:|
+| mpv (d3d11 `hw-output`) | – (not supported) | 104.7 | +68% vs upstream Vulkan |
+| mpv (vulkan `hw-output`) | 62.2 | 105.6 | +70% |
+| FFmpeg | 102.3 | 105.5 | +3% |
+| NVEncC | 89.3 | 99.4 | +11% |
+
+The gains are small here because a single encoder is the bottleneck: it tops out at about 100 fps for 4K, however fast the upscaling is. Upstream mpv is the exception, because it's held back at about 60 fps by its copies back to system memory.
 
 ## Where the gains come from
 
