@@ -87,6 +87,48 @@ Some other things the runs showed:
 - **`hevc_vulkan` doesn't need split encoding.** Before the libplacebo and FFmpeg changes it ran at about the same speed as NVENC with split encoding on (about 188 fps in FFmpeg, 155–160 in mpv); it hasn't been re-measured since. It's useful when you want to stay entirely in Vulkan.
 - **mpv's hardware decoding doesn't help here.** In encoding mode only the `-copy` variants work, and software decoding of 1080p is cheap (about 680 fps).
 
+## Other encoders
+
+The same Anime4K 1080p → 4K upscale with other encoders, each at a fast preset, with software and hardware decoding.
+
+| Encoder (preset) | FFmpeg, sw decode | FFmpeg, hw decode | mpv, sw decode | mpv, hw decode | NVEncC, sw decode | NVEncC, hw decode |
+|---|---:|---:|---:|---:|---:|---:|
+| `libx264` (fast, CRF 22) | 39.6 | **40.9** | 27.0 | 27.3 | – | – |
+| `libx265` (fast, CRF 22) | 20.4 | **20.8** | 6.7 | 6.7 | – | – |
+| `libsvtav1` (preset 8, CRF 30) | 46.8 | **49.5** | 30.1 | 31.4 | – | – |
+| `h264_nvenc` (P1, QP 22) | 169.5 | 190.5 | **201.6** | 188.1 | 175.4 | 184.2 |
+| `av1_nvenc` (P1, QP 88, split encoding) | 292.5 | 293.9 | **309.4** | 199.0 | 260.0 | 265.5 |
+
+Hardware decoding means Vulkan in FFmpeg (`-hwaccel vulkan`), `d3d11va-copy` in mpv and NVDEC in NVEncC (`--avhw`). NVEncC can only use NVENC, so it has no CPU-encoder figures.
+
+- **CPU encoders: use FFmpeg.** The CPU is the limit, so the decoding method makes little difference. mpv reaches only about two-thirds of FFmpeg's speed with them; why hasn't been investigated. `libx265` is worse still in mpv: mpv's `gpu` filter can only output NV12 or RGB, x265 takes neither, so mpv converts every frame from RGB on the CPU.
+- **`h264_nvenc` can't use split encoding**, so it stays below 200 fps whatever the tool.
+- **`av1_nvenc` at P1 with split encoding is the fastest option measured**, ahead of HEVC at P5 (about 230–250 fps). The mpv figure varied a lot between runs (244–330 fps); FFmpeg's was steadier (292–306 fps).
+- AV1 QP runs from 0 to 255 in NVENC, so QP 88 is roughly comparable to QP 22 for H.264/HEVC. CRF 30 for SVT-AV1 is a common middle-quality setting. File sizes and quality differ between encoders; these numbers only compare speed.
+
+The fastest command for each encoder:
+
+```powershell
+# libx264 (FFmpeg, Vulkan decoding): 41 fps. For libx265 (21 fps) use -c:v libx265 -preset fast -crf 22;
+# for SVT-AV1 (50 fps) use -c:v libsvtav1 -preset 8 -crf 30.
+ffmpeg -init_hw_device vulkan=vk:0,disable_multiplane=1 -filter_hw_device vk `
+  -hwaccel vulkan -hwaccel_output_format vulkan -i in.mkv -an `
+  -vf "libplacebo=w=3840:h=2160:format=yuv420p:custom_shader_path=Anime4K_ModeA.glsl:shader_cache=pl.cache,hwdownload,format=yuv420p" `
+  -c:v libx264 -preset fast -crf 22 out.mkv
+
+# h264_nvenc (mpv, software decoding): 202 fps
+mpv.com in.mkv --no-audio --hwdec=no --glsl-shaders=Anime4K_ModeA.glsl `
+  --vf=gpu=api=d3d11:w=3840:h=2160:hw-output=yes:hw-format=nv12 `
+  --o=out.mkv --ovc=h264_nvenc --ovcopts=preset=p1,rc=constqp,qp=22
+
+# av1_nvenc (mpv, software decoding): 309 fps
+mpv.com in.mkv --no-audio --hwdec=no --glsl-shaders=Anime4K_ModeA.glsl `
+  --vf=gpu=api=d3d11:w=3840:h=2160:hw-output=yes:hw-format=nv12 `
+  --o=out.mkv --ovc=av1_nvenc --ovcopts=preset=p1,rc=constqp,qp=88,split_encode_mode=3
+```
+
+NVENC figures are the median of three runs on the 60-second clip. CPU-encoder figures are single runs on 20 seconds of the same clip: at these speeds start-up is negligible and run-to-run variation is small. Everything else is as described below.
+
 ## How these were measured
 
 - **Machine:** Windows 11, RTX 5090 (driver 617.14), 24 CPU threads.
@@ -101,6 +143,6 @@ Some other things the runs showed:
   - **NVEncC** is rigaya's 9.38 release.
   - **mpv** is upstream mpv (commit `6a262d11f6`), built with the same options against the same FFmpeg, with upstream libplacebo.
   - **FFmpeg:** the original is the MediaStack build from before the CUDA hand-over and libplacebo changes, with upstream libplacebo, forced through the system-memory path (`hwdownload`), the only path upstream FFmpeg can run here.
-- **MediaStack:** FFmpeg `3e2cb72a27`, libplacebo `405175f8`, mpv `258cc6bd1b`, NVEnc `c3ab2ec7`, October 2026.
+- **MediaStack:** FFmpeg `3e2cb72a27`, libplacebo `405175f8`, mpv `258cc6bd1b`, NVEnc `c3ab2ec7`, October 2026. The "Other encoders" runs used the same builds with SVT-AV1 4.2.0 added.
 
 Numbers vary by about ±5% between runs, and occasionally one run in three is 10–15% slower.
