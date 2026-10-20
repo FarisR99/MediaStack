@@ -67,3 +67,12 @@ From WSL on a Windows host with MSYS2 (SERVER-1, checkout `C:\src\MediaStack`), 
 ffmpeg -init_hw_device vulkan=vk:0,disable_multiplane=1 -filter_hw_device vk -f lavfi -i testsrc2=s=1920x1080:d=5 `
   -vf "format=nv12,hwupload,libplacebo=w=3840:h=2160:format=nv12,hwupload=derive_device=cuda" -c:v hevc_nvenc -f null -
 ```
+
+## Finding a performance bottleneck (Windows)
+
+Use a 60 s clip, not 20 s: start-up is about 15% of a 20 s run.
+
+1. **Isolate the stages.** Time the full pipeline, then decode only (`-f null -`), filter only (`-c:v wrapped_avframe -f null -`), and encode without the shader. Sample `nvidia-smi dmon -s u` (columns: shader, memory, encoder and decoder use) during the runs. Also sample per-thread CPU with `Get-Process` → `.Threads[].TotalProcessorTime`. If no stage is busy and one thread sits near 100% of a core, the pipeline is serialised on that thread.
+2. **Trace the API calls** with Nsight Systems, which is installed with the driver tools on SERVER-1 (`C:\Program Files\NVIDIA Corporation\Nsight Systems <ver>\target-windows-x64\nsys.exe`): `nsys profile --trace=cuda,vulkan,nvtx,wddm --sample=none -o out <exe> ...`, then `nsys stats --report cuda_api_sum,vulkan_api_sum out.nsys-rep`. For per-thread sequences, `nsys export --type sqlite` and query `VULKAN_API` / `CUPTI_ACTIVITY_KIND_RUNTIME` by `globalTid`. The calls just before and after a long `vkWaitSemaphores` identify who is blocking. The MinGW builds have no PDBs, so CPU backtraces are not useful.
+
+Known costs on NVIDIA on Windows: `vkQueueSubmit2` takes about 15 µs and a zero-timeout `vkWaitSemaphores` 6-8 µs. Anything that does either per render pass shows up with Anime4K.

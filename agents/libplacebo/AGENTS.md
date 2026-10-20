@@ -37,4 +37,7 @@ The source of truth for this doc is `agents/libplacebo/AGENTS.md` in the MediaSt
 
 ## Customisations on this branch
 
-None yet: `mediastack` == upstream master at the time it was branched (API 7.377). List every fork commit here as it lands (and in the superrepo's `docs/customisations.md`).
+List every fork commit here as it lands (and in the superrepo's `docs/customisations.md`). `git log --oneline --no-merges upstream/master..mediastack` lists them. No API changes so far (still API 7.377).
+
+- **Cheaper semaphore polls** (`src/vulkan/command.c` `vk_sync_poll`): zero-timeout polls read the timeline counter (`vkGetSemaphoreCounterValue`) instead of calling `vkWaitSemaphores`. On NVIDIA on Windows the wait costs 6-8 µs, and `vk_poll_commands(vk, 0)` runs several times per pass.
+- **Per-pass submission only when the GPU would idle** (`src/vulkan/gpu_pass.c` end of `vk_pass_run`, `vk_cmds_busy()` in `command.c`): upstream submits after every pass. The fork keeps recording while the last submitted command is still executing. The descriptor-set slow path in `vk_pass_run` submits before blocking, because the sets may be held by unsubmitted passes. Together with the poll change this took Anime4K 1080p → 4K from about 188 to 233 fps in FFmpeg and from about 160 to 225 fps in mpv's Vulkan `hw-output`. If an upstream merge reworks submission or polling, keep both behaviours and re-measure (`docs/benchmarks.md`).

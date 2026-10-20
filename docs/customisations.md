@@ -45,10 +45,16 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
   ```
 
   To decode with NVDEC instead: `-init_hw_device cuda=cu -init_hw_device vulkan=vk@cu -filter_hw_device vk -hwaccel cuda -hwaccel_output_format cuda`, with `hwupload,` at the start of `-vf`.
+- **No waiting when frames go to CUDA.** When handing a Vulkan frame to CUDA, upstream waits on the CPU until the GPU has finished drawing it, twice per frame. CUDA already waits for the frame on the GPU, so the fork skips those waits and FFmpeg can prepare the next frame meanwhile. With the libplacebo changes below, Anime4K 1080p → 4K into NVENC went from about 188 to 233 fps.
 
 ## libplacebo
 
-No changes yet; the `mediastack` branch matches upstream.
+Two changes to the Vulkan backend that make shaders with many passes, like Anime4K, much cheaper on the CPU. Output is unchanged.
+
+- **Fewer submissions.** Upstream hands each render pass to the GPU separately. Anime4K has about 44 passes per frame, and on Windows each hand-over costs more CPU time than the pass takes to run. The fork still hands work over straight away when the GPU would otherwise idle, but otherwise collects passes and hands them over together.
+- **Cheaper checks for finished work.** libplacebo checks for finished GPU work several times per pass. The fork reads a counter instead of asking the driver to wait, which is several times cheaper on NVIDIA on Windows.
+
+Together with the FFmpeg change above, FFmpeg's Anime4K upscaling into NVENC went from about 188 to 233 fps, and mpv's Vulkan hardware output from about 160 to 225 fps. mpv's Direct3D 11 output and NVEncC don't use the Vulkan backend, so they're unaffected.
 
 ## nv-codec-headers
 
