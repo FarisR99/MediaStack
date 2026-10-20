@@ -64,5 +64,9 @@ make_args=()
 # doesn't exist in a submodule (.git is a file). version.sh rewrites
 # ffversion.h only if the version changed, so always let it run.
 rm -f "$build/.version"
+# Each lib*.pc lists the versions of the libraries it depends on, but isn't
+# regenerated when only those change, so a later meson setup against the
+# prefix can fail. They're cheap to regenerate.
+rm -f "$build"/lib*/lib*.pc
 make -C "$build" -j "$MS_JOBS" "${make_args[@]}"
 make -C "$build" install "${make_args[@]}"
