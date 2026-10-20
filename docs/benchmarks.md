@@ -17,7 +17,7 @@ The same setups with a cold shader cache (split encoding still on), and with spl
 
 | Tool | Cold cache + split on: original | Cold cache + split on: MediaStack | Change | Split off: original | Split off: MediaStack | Change |
 |---|---:|---:|---:|---:|---:|---:|
-| mpv (d3d11 `hw-output`) | 63.3 | 208.7 | +230% | 62.2 | 104.7 | +68% |
+| mpv (d3d11 `hw-output`) | – (not supported) | 208.7 | +230% vs upstream Vulkan | – (not supported) | 104.7 | +68% vs upstream Vulkan |
 | mpv (vulkan `hw-output`) | 63.3 | 213.7 | +238% | 62.2 | 105.6 | +70% |
 | FFmpeg | 146.2 | 229.9 | +57% | 102.3 | 105.5 | +3% |
 | NVEncC | 155.9 | 183.9 | +18% | 89.3 | 99.4 | +11% |
