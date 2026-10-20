@@ -14,6 +14,7 @@ The source of truth for this doc is `agents/ffmpeg/AGENTS.md` in the MediaStack 
 - Inside the stack: `scripts/windows/build.sh ffmpeg` or the Docker `ffmpeg` stage. Flags are in `scripts/common/build-ffmpeg.sh`; policy is in the superrepo's `docs/agents/build-config.md`.
 - The build is out-of-tree (`out/<target>/build/ffmpeg`). Never run `./configure` inside `ffmpeg/`: an in-tree configure breaks later out-of-tree builds. If it happens, clean up with `git -C ffmpeg clean -xdf` after checking what it would delete.
 - Reconfiguring happens automatically when the flag list changes, or when `configure` or a component list it reads (`allformats.c`, `allcodecs.c`, `allfilters.c`, …) changes, e.g. after an upstream merge. To force it, delete `out/<target>/build/ffmpeg/.mediastack-configure-args`.
+- FFmpeg normally refreshes `ffmpeg -version` only when `.git/logs/HEAD` changes, which a submodule doesn't have; `build-ffmpeg.sh` deletes `.version` before every `make` so the version string follows the checkout.
 
 ## Conventions
 

@@ -59,9 +59,10 @@ if [[ ! -f "$build/ffbuild/config.mak" || "$(cat "$stamp" 2>/dev/null)" != "$wan
 fi
 make_args=()
 # Builds without .git (Docker) get their version string from FFMPEG_REVISION.
-if [[ -n "${FFMPEG_REVISION:-}" ]]; then
-    make_args+=(REVISION="$FFMPEG_REVISION")
-    rm -f "$build/.version"
-fi
+[[ -n "${FFMPEG_REVISION:-}" ]] && make_args+=(REVISION="$FFMPEG_REVISION")
+# FFmpeg only refreshes its version string when .git/logs/HEAD changes, which
+# doesn't exist in a submodule (.git is a file). version.sh rewrites
+# ffversion.h only if the version changed, so always let it run.
+rm -f "$build/.version"
 make -C "$build" -j "$MS_JOBS" "${make_args[@]}"
 make -C "$build" install "${make_args[@]}"
