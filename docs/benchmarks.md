@@ -9,18 +9,18 @@ Split encoding on (NVENC encodes each frame on all three of the RTX 5090's encod
 | Tool | Original | fps | MediaStack | fps | Change |
 |---|---|---:|---|---:|---:|
 | mpv | upstream `vf=gpu=api=vulkan` | 61.8 | `vf=gpu=api=d3d11`, `hw-output` | **247.8** | **4.0×** |
-| mpv | | | `vf=gpu=api=vulkan`, `hw-output` | 223.9 | 3.6× |
+| mpv | upstream `vf=gpu=api=vulkan` | 61.8 | `vf=gpu=api=vulkan`, `hw-output` | 223.9 | 3.6× |
 | FFmpeg | `libplacebo` → copy to RAM → `hevc_nvenc` | 155.7 | `libplacebo` → CUDA → `hevc_nvenc` | **231.9** | +49% |
 | NVEncC | rigaya's 9.38 release | 166.1 | MediaStack build | **201.9** | +22% |
 
-The same setups with a cold shader cache, and with split encoding off:
+The same setups with a cold shader cache (split encoding still on), and with split encoding off (warm cache):
 
-| Tool | Cold cache: original | Cold cache: MediaStack | Split off: original | Split off: MediaStack |
-|---|---:|---:|---:|---:|
-| mpv (d3d11 `hw-output`) | 63.3 | 208.7 | 62.2 | 104.7 |
-| mpv (vulkan `hw-output`) | 63.3 | 213.7 | 62.2 | 105.6 |
-| FFmpeg | 146.2 | 229.9 | 102.3 | 105.5 |
-| NVEncC | 155.9 | 183.9 | 89.3 | 99.4 |
+| Tool | Cold cache + split on: original | Cold cache + split on: MediaStack | Change | Split off: original | Split off: MediaStack | Change |
+|---|---:|---:|---:|---:|---:|---:|
+| mpv (d3d11 `hw-output`) | 63.3 | 208.7 | +230% | 62.2 | 104.7 | +68% |
+| mpv (vulkan `hw-output`) | 63.3 | 213.7 | +238% | 62.2 | 105.6 | +70% |
+| FFmpeg | 146.2 | 229.9 | +57% | 102.3 | 105.5 | +3% |
+| NVEncC | 155.9 | 183.9 | +18% | 89.3 | 99.4 | +11% |
 
 On 90 seconds of the same episode with a faster encoder setting (P1, 10-bit output), NVEncC went from 218 fps (release) to 314 fps (+44%).
 
