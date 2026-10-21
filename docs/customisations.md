@@ -79,7 +79,6 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
     -vf "libplacebo=w=3840:h=2160:format=nv12:custom_shader_path=Anime4K.glsl,hwupload=derive_device=cuda,fruc_cuda" `
     -c:v hevc_nvenc -preset p5 -tune hq -rc vbr -cq 22 -split_encode_mode 3 out.mkv
   ```
-- **`av1_vulkan` references fixed.** Upstream's Vulkan AV1 encoder told NVIDIA's driver one reference picture and the decoder another whenever a frame used two references, so the output decoded without errors but turned to garbage within a second. Fixed in the fork. `av1_vulkan` still isn't usable for real encodes, though: at any quantizer above 20 (which is everything but near-lossless), NVIDIA's driver (617.14) produces streams that software decoders reject and NVDEC shows as garbage. That looks like a driver bug. Use `av1_nvenc` for AV1.
 - **No waiting when frames go to CUDA.** When handing a Vulkan frame to CUDA, upstream waits on the CPU until the GPU has finished drawing it, twice per frame. CUDA already waits for the frame on the GPU, so the fork skips those waits and FFmpeg can prepare the next frame meanwhile. With the libplacebo changes below, Anime4K 1080p → 4K into NVENC went from about 188 to 233 fps.
 
 ## libplacebo
