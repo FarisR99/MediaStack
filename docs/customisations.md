@@ -27,11 +27,11 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
   mpv in.mkv --glsl-shaders=Anime4K.glsl --vf=gpu=api=vulkan:w=3840:h=2160:truehdr=yes `
     --o=out.mkv --ovc=hevc_nvenc --ovcopts=preset=p5,tune=hq,rc=constqp,qp=22,profile=main10,split_encode_mode=3
   ```
-- **FFmpeg GPU filters after `--vf=gpu`, including frame interpolation:** `--vf=lavfi=[...]:hwdevice=cuda` gives FFmpeg filters a GPU device even when encoding, which upstream mpv only does during hardware-decoded playback. So FFmpeg's `fruc_cuda` (see FFmpeg below) can double the frame rate after Anime4K, with frames staying on the GPU. On an RTX 5090, Anime4K 1080p → 4K + `fruc_cuda` into NVENC ran at 77 output fps (480 frames), against 81 without it (240 frames).
+- **FFmpeg GPU filters after `--vf=gpu`, including frame interpolation:** `--vf=lavfi=[...]:hwdevice=cuda` gives FFmpeg filters a GPU device even when encoding, which upstream mpv only does during hardware-decoded playback. Hardware filters can also be used by name: `--vf=fruc_cuda` gets a CUDA device and an upload automatically, because its name ends in a device type. Other filters are unaffected, and if that kind of device isn't available the filter stops with an error saying so. So FFmpeg's `fruc_cuda` (see FFmpeg below) can double the frame rate after Anime4K, with frames staying on the GPU. On an RTX 5090, Anime4K 1080p → 4K + `fruc_cuda` into NVENC ran at 77 output fps (480 frames), against 81 without it (240 frames).
 
   ```powershell
   mpv in.mkv --glsl-shaders=Anime4K.glsl `
-    --vf=gpu=api=vulkan:w=3840:h=2160,lavfi=[hwupload,fruc_cuda]:hwdevice=cuda `
+    --vf=gpu=api=vulkan:w=3840:h=2160,fruc_cuda `
     --o=out.mkv --ovc=hevc_nvenc
   ```
 
