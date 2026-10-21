@@ -43,7 +43,7 @@ You can't run any of this from WSL/Linux. When you change Windows build scripts,
 
 **NVIDIA runtime DLLs** (`package.sh`, verified 2026-10-21): these are loaded at runtime, so `ldd` can't find them. `stack.conf` `NVIDIA_NGX_URL`, `NVIDIA_FRUC_URL` and `NVIDIA_VSHIP_URL` are the prebuilt bundles NVEnc's release CI ships (`nvenc/.github/workflows/build_releases.yml`). On an upstream nvenc merge, compare those URLs and bump them together.
 - NGX bundle: `NVEncNVSDKNGX.dll` plus `nvngx_truehdr`/`nvngx_vsr` and `cudart64_12` (TrueHDR/VSR for NVEncC, FFmpeg `truehdr_cuda`, mpv `truehdr`), and `NVVideoEffects`/`NVCVImage`/`nvVFXVideoFrameGeneration` (nvvfx).
-- FRUC bundle: `NVEncNVOFFRUC.dll`, `NvOFFRUC.dll`, `cudart64_110` and the MSVC runtime.
+- FRUC bundle: `NVEncNVOFFRUC.dll`, `NvOFFRUC.dll`, `cudart64_110` and the MSVC runtime (NVEncC `--vpp-fruc`, FFmpeg `fruc_cuda`).
 - Vship bundle: `libvship.dll` (NVEncC `--vship-*` SSIMULACRA2/Butteraugli metrics).
 - All of these are byte-identical to the DLLs in the NVEncC 9.38 release (checked 2026-10-21). The release's `nvrtc64_112_0.dll` isn't needed: our NVEncC is built with CUDA 13.0 and uses `nvrtc64_130_0.dll`, which the `ldd` walk picks up from the CUDA toolkit.
 - Cached in `out/ucrt64/build/nvidia-runtime/<name>/` (`.done` marker) and extracted with Windows' `tar.exe`. A failed download warns and packages without it. They're copied last, so they replace any copies placed in the prefix by hand. Empty URL = skip.

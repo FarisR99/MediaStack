@@ -61,6 +61,14 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
     -vf "libplacebo=w=3840:h=2160:format=rgba:custom_shader_path=Anime4K.glsl,hwupload=derive_device=cuda,truehdr_cuda=max_luma=1000" `
     -c:v hevc_nvenc -preset p5 -tune hq -rc vbr -cq 22 -split_encode_mode 3 -profile:v main10 out.mkv
   ```
+- **Frame interpolation (NVIDIA Optical Flow FRUC):** the new `fruc_cuda` filter raises the frame rate (2× by default, or any rate with `fps=`) using the same NVIDIA frame interpolation as NVEncC's `--vpp-fruc`, and the output matches NVEncC's closely. Unlike upstream's `fruc_vulkan`, it repeats a frame when the motion is too hard to follow instead of smearing it, which matters for anime. On a 4K Anime4K encode it ran about 4× faster than `fruc_vulkan` (97 vs 25 fps). Input must be 8-bit (`nv12` or RGBA); put it after Anime4K and before `truehdr_cuda`. Windows and Turing or newer GPUs only; it needs `NVEncNVOFFRUC.dll`, `NvOFFRUC.dll` and `cudart64_110.dll` next to `ffmpeg.exe`, which `scripts/windows/package.sh` downloads into the portable folder.
+
+  ```powershell
+  ffmpeg -init_hw_device vulkan=vk:0,disable_multiplane=1 -filter_hw_device vk `
+    -hwaccel vulkan -hwaccel_output_format vulkan -i in.mkv `
+    -vf "libplacebo=w=3840:h=2160:format=nv12:custom_shader_path=Anime4K.glsl,hwupload=derive_device=cuda,fruc_cuda" `
+    -c:v hevc_nvenc -preset p5 -tune hq -rc vbr -cq 22 -split_encode_mode 3 out.mkv
+  ```
 - **No waiting when frames go to CUDA.** When handing a Vulkan frame to CUDA, upstream waits on the CPU until the GPU has finished drawing it, twice per frame. CUDA already waits for the frame on the GPU, so the fork skips those waits and FFmpeg can prepare the next frame meanwhile. With the libplacebo changes below, Anime4K 1080p → 4K into NVENC went from about 188 to 233 fps.
 
 ## libplacebo
