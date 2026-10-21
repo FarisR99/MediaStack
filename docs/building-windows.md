@@ -59,9 +59,16 @@ A first build with `-Jobs 1` takes about 45 minutes; later builds only recompile
 
 `out\ucrt64\nvencc\` on its own won't start (it needs DLLs from the prefix and from UCRT64). Run `scripts/windows/package.sh` and use `NVEncC64.exe` from `out\ucrt64\dist\`.
 
-`--vpp-onnx` additionally needs ONNX Runtime's GPU DLLs next to `NVEncC64.exe`; they aren't included.
-
 > **Status:** Route A (the default) works: built and tested on Windows 11 with Visual Studio 2022 and CUDA 13.0 in October 2026. Route B hasn't been needed.
+
+### ONNX filters (`--vpp-onnx`, `--vpp-onnx-deint`)
+
+NVEncC's ONNX filters run neural-network models, such as the HDRTVNet++ SDR-to-HDR model, through ONNX Runtime on the GPU. MediaStack doesn't include ONNX Runtime or the models, so download both from rigaya's [HWEnc-onnx-models releases](https://github.com/rigaya/HWEnc-onnx-models/releases):
+
+- **Runtime DLLs:** [`nvenc_vpp_onnx_dlls_20260627.7z`](https://github.com/rigaya/HWEnc-onnx-models/releases/download/20260627/nvenc_vpp_onnx_dlls_20260627.7z) (1.9 GB): ONNX Runtime GPU for CUDA 12 plus the cuDNN 9 and TensorRT 10 DLLs it needs. Extract it and put all the DLLs next to `NVEncC64.exe`, in `out\ucrt64\dist\` or your copy of it. The TensorRT DLLs are only loaded with `provider=tensorrt`. To collect the DLLs yourself instead, see the "Required module details" list under `--vpp-onnx` in [NVEncC's option docs](https://github.com/rigaya/NVEnc/blob/master/NVEncC_Options.en.md#--vpp-onnx-param1value1param2value2). The pieces come from [ONNX Runtime releases](https://github.com/microsoft/onnxruntime/releases) (`onnxruntime-win-x64-gpu-*.zip`; MediaStack builds against 1.23.2, `NVENC_ONNXRUNTIME_URL` in `stack.conf`), [CUDA 12](https://developer.nvidia.com/cuda-toolkit-archive) and [cuDNN 9](https://developer.nvidia.com/cudnn-downloads).
+- **Models:** the newest release, [`20260808`](https://github.com/rigaya/HWEnc-onnx-models/releases/tag/20260808), splits them into [`onnx_models_20260808_main.zip`](https://github.com/rigaya/HWEnc-onnx-models/releases/download/20260808/onnx_models_20260808_main.zip) (2.0 GB, most models), [`onnx_models_20260808_fbcnn_nafnet.zip`](https://github.com/rigaya/HWEnc-onnx-models/releases/download/20260808/onnx_models_20260808_fbcnn_nafnet.zip) (1.8 GB, the FBCNN and NAFNet restoration models) and [`onnx_models_20260808_deint_ddd.zip`](https://github.com/rigaya/HWEnc-onnx-models/releases/download/20260808/onnx_models_20260808_deint_ddd.zip) (3.5 MB, for `--vpp-onnx-deint`). Extract them into one folder (`SHA256SUMS.txt` lists the checksums) and pass it with `--vpp-onnx-model-dir`. Short names like `model=artcnn_c4f32` then work, and `--vpp-onnx list` shows what's available.
+
+> **Not yet tested with MediaStack's NVEncC,** which is built with CUDA 13; the DLL bundle is the CUDA 12 build that rigaya's releases use.
 
 ## 4. Package a portable folder
 
