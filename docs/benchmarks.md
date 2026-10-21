@@ -146,28 +146,35 @@ Output fps; with FRUC, every input frame produces two output frames.
 | Neither | forced 3 | **211.9** | 200.1 | 191.3 |
 | RTX HDR | off | **97.3** | 96.2 | 91.9 |
 | RTX HDR | forced 3 | **184.5** | 168.6 | 155.5 |
-| FRUC | off | 90.3 | 82.8 | **92.2** |
-| FRUC | forced 3 | 83.1 | 75.8 | **88.2** |
-| RTX HDR + FRUC | off | 84.4 | 78.9 | **84.8** |
-| RTX HDR + FRUC | forced 3 | 79.2 | 73.1 | **84.7** |
+| FRUC | off | 99.8 | **104.0** | 92.1 |
+| FRUC | forced 3 | 101.9 | **103.4** | 87.5 |
+| RTX HDR + FRUC | off | 92.2 | **93.8** | 85.0 |
+| RTX HDR + FRUC | forced 3 | 91.8 | **93.7** | 84.9 |
 
 For mpv with RTX HDR alone, `vf=gpu`'s own `truehdr=yes` and `lavfi`'s `truehdr_cuda` are within 2% of each other (96.2 vs 93.4 without split encoding; 166.2 vs 168.6 with it); the table shows the faster.
 
 - **Without FRUC, NVENC is the limit,** so split encoding roughly doubles every tool. RTX HDR costs FFmpeg 5–13%.
-- **With FRUC, FRUC is the limit.** It runs on the 4K frames and manages about 45 input frames per second, so split encoding no longer helps and even costs FFmpeg and mpv a little. Leave it off for FRUC jobs. FFmpeg and NVEncC are within a few percent of each other; mpv is 6–9% behind FFmpeg.
-- **Why mpv falls behind with FRUC:** mpv's renderer uses about five times FFmpeg's CPU time for the same frames (7.8 s vs 1.5 s for this clip without FRUC). Normally that work overlaps with the GPU's, which is why mpv keeps up without FRUC. But mpv runs its whole filter chain on one thread, and `fruc_cuda` waits for the GPU twice per frame. During those waits mpv can't prepare the next frame, so its CPU time adds to the total instead of overlapping. Handling twice as many frames isn't the cause: with frames simply duplicated (`fps` filter instead of FRUC), mpv is only 4% behind FFmpeg (263 vs 273 fps).
-- **Combining RTX HDR and FRUC in mpv:** `truehdr=yes` can't be combined with FRUC, because it outputs 10-bit and FRUC needs 8-bit input. Use `lavfi` with `hw-format=bgra`, `scale_cuda=format=rgba` and `truehdr_cuda`, which keeps frames on the GPU. Going through system memory instead (`hw-output=no:sw-format=rgb`) ran at 60.3 fps without split encoding, 24% slower.
+- **With FRUC, FRUC is the limit.** NVIDIA's FRUC takes about 16 ms per interpolated 4K frame, so split encoding makes little difference. mpv and FFmpeg now beat NVEncC by 8–18%.
+- **`fruc_cuda` runs NVIDIA's FRUC on a worker thread.** The FRUC call blocks until its frame is done. When `fruc_cuda` made that call on the filter thread, nothing else could happen meanwhile, so the next frame's Anime4K render waited for it. That hit mpv hardest: its renderer uses about five times FFmpeg's CPU time for the same frames (7.8 s vs 1.5 s for this clip without FRUC), and that work could no longer overlap with the GPU, leaving mpv 6–9% behind FFmpeg. Now the filter fetches the next frame while FRUC runs, so the two overlap. Against the earlier version in the same runs, this made mpv 18–40% faster and FFmpeg 8–27% faster:
+
+  | Features | Split encoding | FFmpeg before → now | mpv before → now |
+  |---|---|---:|---:|
+  | FRUC | off | 89.6 → 99.8 (+11%) | 82.6 → 104.0 (+26%) |
+  | FRUC | forced 3 | 80.4 → 101.9 (+27%) | 73.6 → 103.4 (+40%) |
+  | RTX HDR + FRUC | off | 85.7 → 92.2 (+8%) | 79.7 → 93.8 (+18%) |
+  | RTX HDR + FRUC | forced 3 | 79.8 → 91.8 (+15%) | 72.6 → 93.7 (+29%) |
+- **Combining RTX HDR and FRUC in mpv:** `truehdr=yes` can't be combined with FRUC, because it outputs 10-bit and FRUC needs 8-bit input. Use `lavfi` with `hw-format=bgra`, `scale_cuda=format=rgba` and `truehdr_cuda`, which keeps frames on the GPU. Going through system memory instead (`hw-output=no:sw-format=rgb`) ran at 60.3 fps without split encoding with the earlier `fruc_cuda`, 24% slower than the GPU route at the time.
 
 The fastest command for RTX HDR + FRUC in each tool (split encoding off):
 
 ```powershell
-# FFmpeg: 84 fps
+# FFmpeg: 92 fps
 ffmpeg -init_hw_device vulkan=vk:0,disable_multiplane=1 -filter_hw_device vk `
   -hwaccel vulkan -hwaccel_output_format vulkan -i in.mkv -an `
   -vf "libplacebo=w=3840:h=2160:format=rgba:custom_shader_path=Anime4K_ModeA.glsl:shader_cache=pl.cache,hwupload=derive_device=cuda,fruc_cuda,truehdr_cuda" `
   -c:v hevc_nvenc -preset p5 -tune hq -rc constqp -qp 22 -profile:v main10 out.mkv
 
-# mpv: 79 fps
+# mpv: 94 fps
 mpv.com in.mkv --no-audio --glsl-shaders=Anime4K_ModeA.glsl `
   "--vf=gpu=api=vulkan:w=3840:h=2160:hw-output=yes:hw-format=bgra,lavfi=[hwupload,fruc_cuda,scale_cuda=format=rgba,truehdr_cuda]:hwdevice=cuda" `
   --o=out.mkv --ovc=hevc_nvenc --ovcopts=preset=p5,tune=hq,rc=constqp,qp=22,profile=main10
@@ -185,7 +192,7 @@ These runs differ from the rest of this page; they were measured as follows:
 - **FPS:** wall-clock time including start-up, best of two runs, warm shader caches.
 - **Decoding:** mpv in software, FFmpeg with Vulkan, NVEncC with NVDEC.
 - **mpv rendering:** Vulkan (`vf=gpu=api=vulkan`), which RTX HDR and the CUDA filters need.
-- **Builds:** FFmpeg `9163c37eff`, mpv `21955ff8f6`, NVEnc `e251b079`. The "RTX HDR + FRUC" rows come from a separate run with the same settings.
+- **Builds:** FFmpeg `9163c37eff` (rows without FRUC) and the `fruc_cuda` worker-thread commit (rows with FRUC), mpv `21955ff8f6`, NVEnc `e251b079`. The rows with FRUC come from a later run with the same settings, all three tools in the same session.
 
 Don't compare these figures directly with the tables above.
 
