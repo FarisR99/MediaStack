@@ -27,6 +27,15 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
   mpv in.mkv --glsl-shaders=Anime4K.glsl --vf=gpu=api=vulkan:w=3840:h=2160:truehdr=yes `
     --o=out.mkv --ovc=hevc_nvenc --ovcopts=preset=p5,tune=hq,rc=constqp,qp=22,profile=main10,split_encode_mode=3
   ```
+- **FFmpeg GPU filters after `--vf=gpu`, including frame interpolation:** `--vf=lavfi=[...]:hwdevice=cuda` gives FFmpeg filters a GPU device even when encoding, which upstream mpv only does during hardware-decoded playback. So FFmpeg's `fruc_cuda` (see FFmpeg below) can double the frame rate after Anime4K, with frames staying on the GPU. On an RTX 5090, Anime4K 1080p → 4K + `fruc_cuda` into NVENC ran at 77 output fps (480 frames), against 81 without it (240 frames).
+
+  ```powershell
+  mpv in.mkv --glsl-shaders=Anime4K.glsl `
+    --vf=gpu=api=vulkan:w=3840:h=2160,lavfi=[hwupload,fruc_cuda]:hwdevice=cuda `
+    --o=out.mkv --ovc=hevc_nvenc
+  ```
+
+  To combine it with HDR, use FFmpeg's `truehdr_cuda` after `fruc_cuda` rather than `truehdr=yes`, because FRUC needs 8-bit input: `--vf=gpu=api=vulkan:w=3840:h=2160:hw-output=no:sw-format=rgb,lavfi=[hwupload,fruc_cuda,truehdr_cuda]:hwdevice=cuda` with `--ovcopts=profile=main10`. That route copies frames through system memory, because `vf=gpu` can't output RGBA hardware frames yet.
 - **10-bit output:** `hw-format=p010` and `sw-format=p010` work like `nv12`, but with 10 bits per sample.
 - **Smaller, correctly coloured downloads:** when the encoder accepts NV12, the filter converts frames to NV12 on the GPU before reading them back. That's under half the data of RGB, and avoids the encoder's own BT.601 conversion.
 - **Persistent shader cache** for the filter, so start-up is faster on repeat runs.
