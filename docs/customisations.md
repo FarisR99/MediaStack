@@ -35,7 +35,7 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
     --o=out.mkv --ovc=hevc_nvenc
   ```
 
-  To combine it with HDR, use FFmpeg's `truehdr_cuda` after `fruc_cuda` rather than `truehdr=yes`, because FRUC needs 8-bit input: `--vf=gpu=api=vulkan:w=3840:h=2160:hw-output=no:sw-format=rgb,lavfi=[hwupload,fruc_cuda,truehdr_cuda]:hwdevice=cuda` with `--ovcopts=profile=main10`. That route copies frames through system memory, because `vf=gpu` can't output RGBA hardware frames yet.
+  To combine it with HDR, use FFmpeg's `truehdr_cuda` after `fruc_cuda` rather than `truehdr=yes`, because FRUC needs 8-bit input: `--vf=gpu=api=vulkan:w=3840:h=2160:hw-output=yes:hw-format=bgra,lavfi=[hwupload,fruc_cuda,scale_cuda=format=rgba,truehdr_cuda]:hwdevice=cuda` with `--ovcopts=profile=main10`. Frames stay on the GPU (`scale_cuda` swaps BGRA to the RGBA TrueHDR needs). On a 30 s Anime4K 1080p → 4K clip with RTX HDR and 2× FRUC into NVENC (P5, QP 22), that ran at 78.9 fps, against 84.4 for FFmpeg and 84.8 for NVEncC.
 - **10-bit output:** `hw-format=p010` and `sw-format=p010` work like `nv12`, but with 10 bits per sample.
 - **Smaller, correctly coloured downloads:** when the encoder accepts NV12, the filter converts frames to NV12 on the GPU before reading them back. That's under half the data of RGB, and avoids the encoder's own BT.601 conversion.
 - **Persistent shader cache** for the filter, so start-up is faster on repeat runs.
