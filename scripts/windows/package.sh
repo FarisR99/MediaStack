@@ -26,7 +26,7 @@ fi
 # NVIDIA runtime DLLs (stack.conf NVIDIA_*_URL), loaded at runtime so ldd can't
 # find them. Fetched once into out/; Windows' tar.exe (libarchive) reads 7z.
 # Copied over any hand-placed copies in the prefix.
-for url in "$NVIDIA_NGX_URL" "$NVIDIA_FRUC_URL"; do
+for url in "$NVIDIA_NGX_URL" "$NVIDIA_FRUC_URL" "$NVIDIA_VSHIP_URL"; do
     [[ -n "$url" ]] || continue
     name=$(basename "$url" .7z)
     dir=out/ucrt64/build/nvidia-runtime/$name
@@ -61,7 +61,7 @@ done
     for p in $STACK_PROJECTS; do
         printf '%-17s %s\n' "$p:" "$(git -C "$p" describe --tags --always --dirty 2>/dev/null)"
     done
-    for url in "$NVIDIA_NGX_URL" "$NVIDIA_FRUC_URL"; do
+    for url in "$NVIDIA_NGX_URL" "$NVIDIA_FRUC_URL" "$NVIDIA_VSHIP_URL"; do
         [[ -n "$url" ]] && echo "nvidia runtime:   $(basename "$url")"
     done
 } > "$dist/BUILDINFO.txt"
