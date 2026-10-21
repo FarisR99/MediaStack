@@ -23,6 +23,27 @@ else
     warn "NVEncC not built yet (scripts/windows/nvencc-spike.ps1); packaging without it"
 fi
 
+# NVIDIA runtime DLLs (stack.conf NVIDIA_*_URL), loaded at runtime so ldd can't
+# find them. Fetched once into out/; Windows' tar.exe (libarchive) reads 7z.
+# Copied over any hand-placed copies in the prefix.
+for url in "$NVIDIA_NGX_URL" "$NVIDIA_FRUC_URL"; do
+    [[ -n "$url" ]] || continue
+    name=$(basename "$url" .7z)
+    dir=out/ucrt64/build/nvidia-runtime/$name
+    if [[ ! -f "$dir/.done" ]]; then
+        msg "Fetching $url"
+        rm -rf "$dir" && mkdir -p "$dir"
+        if curl -fsSL -o "$dir.7z" "$url" &&
+           "$(cygpath -S)/tar.exe" -xf "$(cygpath -w "$dir.7z")" -C "$(cygpath -w "$dir")"; then
+            touch "$dir/.done"
+        else
+            warn "could not fetch $name; packaging without it"
+        fi
+        rm -f "$dir.7z"
+    fi
+    [[ -f "$dir/.done" ]] && cp -f "$dir"/*.dll "$dist/"
+done
+
 # ldd lists the full dependency closure; keep everything that isn't a system DLL.
 for f in "$dist"/*.exe "$dist"/*.dll; do
     ldd "$f" 2>/dev/null | awk '$2 == "=>" { print $3 }'
@@ -39,6 +60,9 @@ done
     echo "target: ucrt64"
     for p in $STACK_PROJECTS; do
         printf '%-17s %s\n' "$p:" "$(git -C "$p" describe --tags --always --dirty 2>/dev/null)"
+    done
+    for url in "$NVIDIA_NGX_URL" "$NVIDIA_FRUC_URL"; do
+        [[ -n "$url" ]] && echo "nvidia runtime:   $(basename "$url")"
     done
 } > "$dist/BUILDINFO.txt"
 

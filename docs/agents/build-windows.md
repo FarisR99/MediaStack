@@ -23,7 +23,7 @@ You can't run any of this from WSL/Linux. When you change Windows build scripts,
 | `scripts/windows/build.sh [project...]` | `MS_TARGET=ucrt64` → `scripts/common/build-all.sh`. Out-of-tree builds in `out/ucrt64/build/<p>`, installs into the **dev prefix** `out/ucrt64/prefix`. Skips nvenc. |
 | `scripts/windows/nvencc-spike.ps1 [-Route A\|B]` | Stages `nvenc/ffmpeg_lgpl/` (gitignored by NVEnc), runs `msbuild NVEnc.sln /t:NVEncC RelStatic x64`, and copies to `out/ucrt64/nvencc/`. |
 | `scripts/windows/build-ffmpeg-msvc.sh` | Route B only: minimal shared FFmpeg built with `--toolchain=msvc` into `out/msvc/prefix`. |
-| `scripts/windows/package.sh` | Portable `out/ucrt64/dist/`: exes plus the `ldd` closure of non-system DLLs, NVEncC if built, and `BUILDINFO.txt`. |
+| `scripts/windows/package.sh` | Portable `out/ucrt64/dist/`: exes plus the `ldd` closure of non-system DLLs, NVEncC if built, the NVIDIA runtime bundles, and `BUILDINFO.txt`. |
 | `scripts/windows/activate.ps1` | Prepends `out\ucrt64\dist` to `$env:Path` for the current PowerShell session only (never the registry). Run it before testing on a PC that also has older mpv/FFmpeg on PATH. |
 
 ## How NVEncC links FFmpeg on Windows
@@ -40,6 +40,14 @@ You can't run any of this from WSL/Linux. When you change Windows build scripts,
 - `VshipColor.h`, `avisynth_c.h`, `VapourSynth.h` missing: the vcxproj includes `$(AVISYNTH_SDK)`, `$(VAPOURSYNTH_SDK)`, `$(OPENCL_HEADERS)` and `$(VSHIP_DIR)`. NVEnc's release CI fills them from rigaya's `hwenc_headers` bundle; the script fetches the same bundle (`NVENC_HEADERS_URL` in `stack.conf`) into `out/ucrt64/build/nvenc-headers/` for any variable that's unset.
 - `onnxruntime_cxx_api.h` missing: `ONNXRUNTIME_DIR` likewise, from the ONNX Runtime CPU zip (`NVENC_ONNXRUNTIME_URL`), `include/` only. `onnxruntime.dll` is loaded at runtime and isn't bundled, so `--vpp-onnx` needs the user to supply ONNX Runtime's GPU DLLs.
 - `libhdr10plus-rs/hdr10plus.h` missing: UCRT64's `include/hdr10plus.h` is x265's, a different API. `deps.sh` installs `libhdr10plus-rs`, and the spike stages it like libdovi.
+
+**NVIDIA runtime DLLs** (`package.sh`, verified 2026-10-21): these are loaded at runtime, so `ldd` can't find them. `stack.conf` `NVIDIA_NGX_URL` and `NVIDIA_FRUC_URL` are the prebuilt bundles NVEnc's release CI ships (`nvenc/.github/workflows/build_releases.yml`). On an upstream nvenc merge, compare those URLs and bump them together.
+- NGX bundle: `NVEncNVSDKNGX.dll` plus `nvngx_truehdr`/`nvngx_vsr` and `cudart64_12` (TrueHDR/VSR for NVEncC, FFmpeg `truehdr_cuda`, mpv `truehdr`), and `NVVideoEffects`/`NVCVImage`/`nvVFXVideoFrameGeneration` (nvvfx).
+- FRUC bundle: `NVEncNVOFFRUC.dll`, `NvOFFRUC.dll`, `cudart64_110` and the MSVC runtime.
+- Cached in `out/ucrt64/build/nvidia-runtime/<name>/` (`.done` marker) and extracted with Windows' `tar.exe`. A failed download warns and packages without it. They're copied last, so they replace any copies placed in the prefix by hand. Empty URL = skip.
+- The wrapper DLLs could be built from `nvenc/NVEncNVSDKNGX`/`NVEncNVOFFRUC` (`ReleaseNVDLL`, needs the RTX Video / Optical Flow SDKs), but the `nvngx_*`/`NvOFFRUC` binaries only come from NVIDIA, so we use the bundles.
+- Smoke-tested from `dist`: FFmpeg `truehdr_cuda`, NVEncC `--vpp-ngx-truehdr`, `--vpp-resize ngx-vsr`, `--vpp-fruc fps=48`. nvvfx filters are untested.
+- Running from the dev prefix (`out/ucrt64/prefix/bin`) doesn't get them; use `dist`.
 
 `out/ucrt64/nvencc/` isn't self-contained: it lacks the prefix's `swscale`/`libvmaf`/`libplacebo` dependencies and UCRT64's `libdovi`/`libhdr10plus-rs`. Run it from `dist` (`package.sh` resolves them), or with `out\ucrt64\prefix\bin` and `C:\msys64\ucrt64\bin` on PATH. From WSL, a Windows exe only sees a WSL `PATH` with `WSLENV=PATH/l`; otherwise it fails silently with exit 53.
 

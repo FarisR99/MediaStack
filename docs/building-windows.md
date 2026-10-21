@@ -75,6 +75,7 @@ scripts/windows/package.sh
 
 - `mpv.exe`, `ffmpeg.exe`, `ffprobe.exe`, NVEncC (if you built it)
 - every DLL they need
+- NVIDIA's runtime DLLs for RTX Video HDR and Super Resolution, NVIDIA's video effects filters and NVEncC's frame interpolation (`nvngx_truehdr.dll`, `nvngx_vsr.dll`, `NvOFFRUC.dll` and friends). The first run downloads them (about 180 MB) from the NVEnc release bundles named in `stack.conf`; later runs reuse the download. They make the folder about 465 MB.
 - a `BUILDINFO.txt` recording exactly which commits went in
 
 The folder runs on any Windows PC with an NVIDIA driver; it doesn't need MSYS2. Don't share it outside your own machines (see [licensing](licensing.md)).
