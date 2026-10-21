@@ -129,6 +129,66 @@ mpv.com in.mkv --no-audio --hwdec=no --glsl-shaders=Anime4K_ModeA.glsl `
 
 NVENC figures are the median of three runs on the 60-second clip. CPU-encoder figures are single runs on 20 seconds of the same clip: at these speeds start-up is negligible and run-to-run variation is small. Everything else is as described below.
 
+## RTX HDR and frame interpolation
+
+The same Anime4K 1080p → 4K upscale with NVIDIA's RTX HDR (SDR to HDR10), frame interpolation (FRUC, 2× frame rate), both, or neither, compared across the three tools.
+
+The tools use these features:
+- **FFmpeg:** `truehdr_cuda` and `fruc_cuda`.
+- **mpv:** `vf=gpu`'s `truehdr`, or the same FFmpeg filters through `lavfi`.
+- **NVEncC:** `--vpp-ngx-truehdr` and `--vpp-fruc`.
+
+Output fps; with FRUC, every input frame produces two output frames.
+
+| Features | Split encoding | FFmpeg | mpv | NVEncC |
+|---|---|---:|---:|---:|
+| Neither | off | **102.0** | 101.6 | 97.7 |
+| Neither | forced 3 | **211.9** | 200.1 | 191.3 |
+| RTX HDR | off | **97.3** | 96.2 | 91.9 |
+| RTX HDR | forced 3 | **184.5** | 168.6 | 155.5 |
+| FRUC | off | 90.3 | 82.8 | **92.2** |
+| FRUC | forced 3 | 83.1 | 75.8 | **88.2** |
+| RTX HDR + FRUC | off | 84.4 | 78.9 | **84.8** |
+| RTX HDR + FRUC | forced 3 | 79.2 | 73.1 | **84.7** |
+
+For mpv with RTX HDR alone, `vf=gpu`'s own `truehdr=yes` and `lavfi`'s `truehdr_cuda` are within 2% of each other (96.2 vs 93.4 without split encoding; 166.2 vs 168.6 with it); the table shows the faster.
+
+- **Without FRUC, NVENC is the limit,** so split encoding roughly doubles every tool. RTX HDR costs FFmpeg 5–13%.
+- **With FRUC, FRUC is the limit.** It runs on the 4K frames and manages about 45 input frames per second, so split encoding no longer helps and even costs FFmpeg and mpv a little. Leave it off for FRUC jobs. FFmpeg and NVEncC are within a few percent of each other; mpv is 6–9% behind FFmpeg.
+- **Why mpv falls behind with FRUC:** mpv's renderer uses about five times FFmpeg's CPU time for the same frames (7.8 s vs 1.5 s for this clip without FRUC). Normally that work overlaps with the GPU's, which is why mpv keeps up without FRUC. But mpv runs its whole filter chain on one thread, and `fruc_cuda` waits for the GPU twice per frame. During those waits mpv can't prepare the next frame, so its CPU time adds to the total instead of overlapping. Handling twice as many frames isn't the cause: with frames simply duplicated (`fps` filter instead of FRUC), mpv is only 4% behind FFmpeg (263 vs 273 fps).
+- **Combining RTX HDR and FRUC in mpv:** `truehdr=yes` can't be combined with FRUC, because it outputs 10-bit and FRUC needs 8-bit input. Use `lavfi` with `hw-format=bgra`, `scale_cuda=format=rgba` and `truehdr_cuda`, which keeps frames on the GPU. Going through system memory instead (`hw-output=no:sw-format=rgb`) ran at 60.3 fps without split encoding, 24% slower.
+
+The fastest command for RTX HDR + FRUC in each tool (split encoding off):
+
+```powershell
+# FFmpeg: 84 fps
+ffmpeg -init_hw_device vulkan=vk:0,disable_multiplane=1 -filter_hw_device vk `
+  -hwaccel vulkan -hwaccel_output_format vulkan -i in.mkv -an `
+  -vf "libplacebo=w=3840:h=2160:format=rgba:custom_shader_path=Anime4K_ModeA.glsl:shader_cache=pl.cache,hwupload=derive_device=cuda,fruc_cuda,truehdr_cuda" `
+  -c:v hevc_nvenc -preset p5 -tune hq -rc constqp -qp 22 -profile:v main10 out.mkv
+
+# mpv: 79 fps
+mpv.com in.mkv --no-audio --glsl-shaders=Anime4K_ModeA.glsl `
+  "--vf=gpu=api=vulkan:w=3840:h=2160:hw-output=yes:hw-format=bgra,lavfi=[hwupload,fruc_cuda,scale_cuda=format=rgba,truehdr_cuda]:hwdevice=cuda" `
+  --o=out.mkv --ovc=hevc_nvenc --ovcopts=preset=p5,tune=hq,rc=constqp,qp=22,profile=main10
+
+# NVEncC: 85 fps
+NVEncC64.exe --avhw -i in.mkv -c hevc --preset P5 --cqp 22 --output-depth 10 `
+  --vpp-libplacebo-shader shader=Anime4K_ModeA.glsl,res=3840x2160 `
+  --vpp-ngx-truehdr maxluminance=1000 --vpp-fruc double -o out.mkv
+```
+
+These runs differ from the rest of this page; they were measured as follows:
+- **Clip:** 30 seconds (720 frames) of a different 1080p anime clip: a 10-second action scene repeated three times.
+- **Upscale:** Anime4K to 3840×2160 with EWA Lanczos4-sharpest resampling in all three tools.
+- **Output:** HEVC Main 10, 10-bit, at P5, tune hq, constant QP 22, 3 B-frames. RTX HDR at its defaults (1000 nits).
+- **FPS:** wall-clock time including start-up, best of two runs, warm shader caches.
+- **Decoding:** mpv in software, FFmpeg with Vulkan, NVEncC with NVDEC.
+- **mpv rendering:** Vulkan (`vf=gpu=api=vulkan`), which RTX HDR and the CUDA filters need.
+- **Builds:** FFmpeg `9163c37eff`, mpv `21955ff8f6`, NVEnc `e251b079`. The "RTX HDR + FRUC" rows come from a separate run with the same settings.
+
+Don't compare these figures directly with the tables above.
+
 ## How these were measured
 
 - **Machine:** Windows 11, RTX 5090 (driver 617.14), 24 CPU threads.
