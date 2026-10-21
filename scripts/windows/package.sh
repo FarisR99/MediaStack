@@ -44,6 +44,12 @@ for url in "$NVIDIA_NGX_URL" "$NVIDIA_FRUC_URL" "$NVIDIA_VSHIP_URL"; do
     [[ -f "$dir/.done" ]] && cp -f "$dir"/*.dll "$dist/"
 done
 
+# NVEncC's ONNX Runtime DLLs, only if fetched with scripts/windows/fetch-onnx.sh.
+onnx=out/ucrt64/build/onnx-runtime
+if [[ -f "$onnx/.done" ]]; then
+    find "$onnx" -iname '*.dll' -exec cp -f {} "$dist/" \;
+fi
+
 # ldd lists the full dependency closure; keep everything that isn't a system DLL.
 for f in "$dist"/*.exe "$dist"/*.dll; do
     ldd "$f" 2>/dev/null | awk '$2 == "=>" { print $3 }'
@@ -64,6 +70,9 @@ done
     for url in "$NVIDIA_NGX_URL" "$NVIDIA_FRUC_URL" "$NVIDIA_VSHIP_URL"; do
         [[ -n "$url" ]] && echo "nvidia runtime:   $(basename "$url")"
     done
+    if [[ -f "$onnx/.done" ]]; then
+        echo "onnx runtime:     $(basename "$NVENC_ONNX_RUNTIME_URL")"
+    fi
 } > "$dist/BUILDINFO.txt"
 
 msg "Packaged $(ls "$dist" | wc -l) files into $dist ($(du -sh "$dist" | cut -f1))"
