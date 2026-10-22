@@ -53,7 +53,7 @@ If linking fails, or NVEncC crashes at startup, try the fallback, which builds a
 .\scripts\windows\nvencc-spike.ps1 -Route B
 ```
 
-NVEncC has about 90 very large CUDA files. If the build fails with "compiler is out of heap space" or "LLVM error : out of memory", too many of them compiled at once. The script compiles half as many files at a time as you have CPU threads; pass a lower number, e.g. `-Jobs 4`. Rerunning is incremental, so files that already compiled aren't redone.
+NVEncC has about 90 very large CUDA files. If the build fails with "compiler is out of heap space" or "LLVM error : out of memory", the compiler ran out of memory. CUDA files compile one at a time, each building its three GPU targets in parallel; pass `-CudaThreads 1` to build them one after another instead. `-Jobs` (default: half your CPU threads) only sets how many C++ files compile at once. Rerunning is incremental, so files that already compiled aren't redone.
 
 A first build with `-Jobs 1` takes about 45 minutes; later builds only recompile what changed.
 

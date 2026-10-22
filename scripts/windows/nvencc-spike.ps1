@@ -25,11 +25,15 @@
   VAPOURSYNTH_SDK, OPENCL_HEADERS, VSHIP_DIR and ONNXRUNTIME_DIR are already set.
 
 .PARAMETER Jobs
-  How many source files compile at once (default: half the logical CPUs).
-  NVEnc's CUDA files are huge: with every core busy, and nvcc's own -t 0
-  fanning each file out per GPU architecture, cicc/cl run out of memory
-  ("compiler is out of heap space", "LLVM error : out of memory"). Lower it
-  further if that still happens. nvcc always runs single-threaded here.
+  How many C++ files compile at once (default: half the logical CPUs). It
+  doesn't apply to the CUDA files, which MSBuild compiles one at a time.
+
+.PARAMETER CudaThreads
+  nvcc -t: how many GPU architectures of one CUDA file compile in parallel
+  (default 3, the number NVEnc builds for). Since CUDA files compile one at a
+  time, this is the CUDA stage's only parallelism. The first builds ran out of
+  memory ("compiler is out of heap space", "LLVM error : out of memory") with
+  -t 0 *and* many files at once; lower this to 1 if that happens.
 
 .EXAMPLE
   .\scripts\windows\nvencc-spike.ps1
@@ -40,7 +44,8 @@ param(
     [ValidateSet('A', 'B')] [string] $Route = 'A',
     [string] $Msys2Root = 'C:\msys64',
     [string] $Configuration = 'RelStatic',
-    [int] $Jobs = [math]::Max(1, [int]([Environment]::ProcessorCount / 2))
+    [int] $Jobs = [math]::Max(1, [int]([Environment]::ProcessorCount / 2)),
+    [int] $CudaThreads = 3
 )
 $ErrorActionPreference = 'Stop'
 
@@ -152,11 +157,12 @@ foreach ($rs in @{ lib = 'dovi.lib'; dll = 'libdovi.dll' }, @{ lib = 'hdr10plus-
 # keeps DLLs of older libplacebo API versions; drop them so only the staged one
 # reaches out\ucrt64\nvencc.
 Remove-Item (Join-Path $Nvenc "_build\x64\$Configuration\libplacebo-*.dll") -ErrorAction SilentlyContinue
-Write-Host "==> MSBuild NVEncC ($Configuration|x64, $Jobs jobs)"
-# One project at a time, $Jobs files at a time, and nvcc without -t 0
-# (cudaver.props sets CUDA_THREADS; a global property overrides it).
+Write-Host "==> MSBuild NVEncC ($Configuration|x64, $Jobs C++ jobs, nvcc -t $CudaThreads)"
+# One project at a time, $Jobs C++ files at a time, one CUDA file at a time with
+# $CudaThreads architectures in parallel (cudaver.props sets CUDA_THREADS; a
+# global property overrides it).
 & msbuild.exe "$Nvenc\NVEnc.sln" /t:NVEncC /m:1 /nologo /v:minimal "/p:Configuration=$Configuration" /p:Platform=x64 `
-    "/p:CL_MPCount=$Jobs" "/p:CUDA_THREADS=-t 1"
+    "/p:CL_MPCount=$Jobs" "/p:CUDA_THREADS=-t $CudaThreads"
 if ($LASTEXITCODE) { throw "MSBuild failed (route $Route). Try the other route, and note the error in docs/building-windows.md" }
 
 $Built = Join-Path $Nvenc "_build\x64\$Configuration"
