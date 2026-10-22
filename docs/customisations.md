@@ -41,6 +41,7 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
 - **Smaller, correctly coloured downloads:** when the encoder accepts NV12, the filter converts frames to NV12 on the GPU before reading them back. That's under half the data of RGB, and avoids the encoder's own BT.601 conversion.
 - **Persistent shader cache** for the filter, so start-up is faster on repeat runs.
 - **Stability fixes:** context set-up and teardown, subtitle state, device options, OpenGL readback. `--vf=gpu=api=vulkan` no longer crashes on machines without a working Vulkan driver; it reports an error instead. That fix would also suit upstream mpv.
+- **Hardware decoding on the GPU you chose:** `--hwdec=vulkan-copy` and `--hwdec=d3d11va-copy` now decode on the GPU selected with `--vulkan-device` or `--d3d11-adapter`. Before, they always used the default GPU, so with two GPUs decoding could happen on a different one from the rendering. This fix would also suit upstream mpv. On an Intel UHD 770, `vulkan-copy` currently crashes in Intel's driver; use `--hwdec=qsv-copy` there.
 - **Repo housekeeping:** Vulkan is required, unused CI platforms are removed, and Windows (MSYS2) CI builds are uploaded.
 
 ## NVEncC
