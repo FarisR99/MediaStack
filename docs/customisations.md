@@ -95,7 +95,7 @@ Two changes to the Vulkan backend that make shaders with many passes, like Anime
 
 Together with the FFmpeg change above, FFmpeg's Anime4K upscaling into NVENC went from about 188 to 233 fps, and mpv's Vulkan hardware output from about 160 to 225 fps. mpv's Direct3D 11 output and NVEncC don't use the Vulkan backend, so they're unaffected.
 
-One addition to its API (version 378): custom shaders can be run at half (16-bit) precision, which FFmpeg's `custom_shader_half` and mpv's `--glsl-shader-half-precision` use. Besides declaring 16-bit precision in each pass, it makes the shader's texture reads 16-bit; without that, the precision declaration made no difference in FFmpeg.
+One addition to its API (version 381): custom shaders can be run at half (16-bit) precision, which FFmpeg's `custom_shader_half` and mpv's `--glsl-shader-half-precision` use. Besides declaring 16-bit precision in each pass, it makes the shader's texture reads 16-bit; without that, the precision declaration made no difference in FFmpeg.
 
 ## nv-codec-headers
 
