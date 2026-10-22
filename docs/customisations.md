@@ -41,7 +41,9 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
 - **Smaller, correctly coloured downloads:** when the encoder accepts NV12, the filter converts frames to NV12 on the GPU before reading them back. That's under half the data of RGB, and avoids the encoder's own BT.601 conversion.
 - **Persistent shader cache** for the filter, so start-up is faster on repeat runs.
 - **Stability fixes:** context set-up and teardown, subtitle state, device options, OpenGL readback. `--vf=gpu=api=vulkan` no longer crashes on machines without a working Vulkan driver; it reports an error instead. That fix would also suit upstream mpv.
-- **Hardware decoding on the GPU you chose:** `--hwdec=vulkan-copy` and `--hwdec=d3d11va-copy` now decode on the GPU selected with `--vulkan-device` or `--d3d11-adapter`. Before, they always used the default GPU, so with two GPUs decoding could happen on a different one from the rendering. This fix would also suit upstream mpv. To decode on a different GPU from the one rendering, use `--vulkan-decode-device` (like mpv's `--cuda-decode-device`). On an Intel UHD 770, `vulkan-copy` currently crashes in Intel's driver; use `--hwdec=qsv-copy` there.
+- **Hardware decoding on the GPU you chose:** `--hwdec=vulkan-copy` and `--hwdec=d3d11va-copy` now decode on the GPU selected with `--vulkan-device` or `--d3d11-adapter`. Before, they always used the default GPU, so with two GPUs decoding could happen on a different one from the rendering. This fix would also suit upstream mpv. To decode on a different GPU from the one rendering, use `--vulkan-decode-device` (like mpv's `--cuda-decode-device`).
+- **Encoding on the GPU you choose:** `--ovc-device` (with `--ovc-device-opts`) picks the device for a hardware encoder that gets ordinary frames, e.g. QSV on a particular Intel GPU while another GPU renders.
+- **Half-precision user shaders:** `--glsl-shader-half-precision=yes` runs `--glsl-shaders` (such as Anime4K) at 16-bit precision. On Intel integrated graphics that's 70–80% faster with no visible change; NVIDIA GPUs gain nothing. On an Intel UHD 770, `vulkan-copy` currently crashes in Intel's driver; use `--hwdec=qsv-copy` there.
 - **Repo housekeeping:** Vulkan is required, unused CI platforms are removed, and Windows (MSYS2) CI builds are uploaded.
 
 ## NVEncC
@@ -83,14 +85,17 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
   ```
 - **No waiting when frames go to CUDA.** When handing a Vulkan frame to CUDA, upstream waits on the CPU until the GPU has finished drawing it, twice per frame. CUDA already waits for the frame on the GPU, so the fork skips those waits and FFmpeg can prepare the next frame meanwhile. With the libplacebo changes below, Anime4K 1080p → 4K into NVENC went from about 188 to 233 fps.
 
+- **Half-precision custom shaders:** `libplacebo=...:custom_shader_half=1` runs a custom shader such as Anime4K at 16-bit precision. On Intel integrated graphics that made Anime4K 59–88% faster with no visible change; NVIDIA GPUs gain nothing, so it's off by default. It needs the libplacebo change below.
 ## libplacebo
 
-Two changes to the Vulkan backend that make shaders with many passes, like Anime4K, much cheaper on the CPU. Output is unchanged.
+Two changes to the Vulkan backend that make shaders with many passes, like Anime4K, much cheaper on the CPU (output unchanged), and an option to run custom shaders at half precision.
 
 - **Fewer submissions.** Upstream hands each render pass to the GPU separately. Anime4K has about 44 passes per frame, and on Windows each hand-over costs more CPU time than the pass takes to run. The fork still hands work over straight away when the GPU would otherwise idle, but otherwise collects passes and hands them over together.
 - **Cheaper checks for finished work.** libplacebo checks for finished GPU work several times per pass. The fork reads a counter instead of asking the driver to wait, which is several times cheaper on NVIDIA on Windows.
 
 Together with the FFmpeg change above, FFmpeg's Anime4K upscaling into NVENC went from about 188 to 233 fps, and mpv's Vulkan hardware output from about 160 to 225 fps. mpv's Direct3D 11 output and NVEncC don't use the Vulkan backend, so they're unaffected.
+
+One addition to its API (version 378): custom shaders can be run at half (16-bit) precision, which FFmpeg's `custom_shader_half` and mpv's `--glsl-shader-half-precision` use. Besides declaring 16-bit precision in each pass, it makes the shader's texture reads 16-bit; without that, the precision declaration made no difference in FFmpeg.
 
 ## nv-codec-headers
 
