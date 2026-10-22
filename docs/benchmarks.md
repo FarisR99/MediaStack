@@ -217,7 +217,8 @@ The same Anime4K 1080p → 4K upscale on the Intel UHD 770 built into the CPU, w
 - **mpv with Vulkan is the fastest route:** 12% ahead of FFmpeg with Mode C and 9% with Mode A. On the new driver it's also 20% faster than mpv's D3D11 rendering; on the old driver the two were within 3%.
 - **Keeping everything on the Intel GPU costs about 14%** (6.04 vs 7.00 fps), because decoding, Anime4K and encoding then share it. That route is for PCs without an NVIDIA GPU.
 - **Mode C is about 80% faster than Mode A** on the new driver (7.86 vs 4.34 fps in mpv).
-- **To decode on the Intel GPU in mpv, use `--hwdec=qsv-copy`.** It uses FFmpeg's QSV decoders, which always run on the Intel GPU. Avoid `d3d11va-copy` and `vulkan-copy` here: they open the default GPU (here the RTX 5090). It measured 3% faster than software decoding (8.12 vs 7.86 fps), within run-to-run variation.
+- **To decode on the Intel GPU in mpv, use `--hwdec=qsv-copy`.** It uses FFmpeg's QSV decoders, which always run on the Intel GPU. It measured 3% faster than software decoding (8.12 vs 7.86 fps), within run-to-run variation. MediaStack's mpv now decodes `vulkan-copy` and `d3d11va-copy` on the GPU picked with `--vulkan-device` and `--d3d11-adapter` (upstream mpv uses the default GPU, here the RTX 5090). `d3d11va-copy` works on the UHD 770, but `vulkan-copy` there crashes inside Intel's driver on the first frame; the cause isn't known yet.
+- **To decode on the RTX 5090 instead,** while Anime4K runs on the Intel GPU, use `--hwdec=nvdec-copy`, or `--hwdec=vulkan-copy` with `--vulkan-decode-device="NVIDIA GeForce RTX 5090"`.
 
 The fastest command in each tool (Mode C, new driver). Select the Intel GPU by name in mpv (`mpv --vulkan-device=help` lists them) and by index in FFmpeg (`1` here):
 
@@ -242,11 +243,47 @@ ffmpeg -init_hw_device qsv=qs -init_hw_device vulkan=vk:1 -filter_hw_device vk `
 
 `vf=gpu=api=d3d11` takes `--d3d11-adapter=Intel` to pick the Intel GPU. It ignores `sw-format=nv12` (it has no buffer downloads) and reads frames back as RGB.
 
+### Faster shaders: half precision and Anime4K's Fast sets
+
+Two shader changes speed up Anime4K on the UHD 770 far more than any of the settings above. mpv `vf=gpu=api=vulkan`, software decoding, `hevc_nvenc`. PSNR is measured against the same mode at normal precision, over 48 frames captured losslessly.
+
+| Shader | Precision | fps | Change | PSNR vs the normal shader |
+|---|---|---:|---:|---:|
+| Mode C | normal | 7.86 | – | – |
+| Mode C | **half** | 14.10 | +79% | 65.4 dB |
+| Mode C Fast | normal | 20.51 | +161% | 50.5 dB |
+| Mode C Fast | **half** | **26.96** | **+243%** | – |
+| Mode A | normal | 4.34 | – | – |
+| Mode A | **half** | 8.03 | +85% | 63.8 dB |
+| Mode A Fast | normal | 15.07 | +247% | 44.0 dB |
+| Mode A Fast | **half** | **21.52** | **+396%** | – |
+
+Mode C Fast at half precision is 67.4 dB from Mode C Fast at normal precision. For scale, Mode A and Mode C differ from each other by 37.7 dB.
+
+- **Half precision costs nothing visible on an Intel iGPU.** The UHD 770 does 16-bit maths at twice the rate of 32-bit, and Anime4K's networks are almost all multiply-adds. Adding the line `precision mediump float;` to each shader pass, after its `//!` header lines, lets the driver use 16-bit maths. The output stays within 64–65 dB of normal precision, so on 8-bit video almost every pixel is identical.
+- **Don't use half precision on NVIDIA.** On the RTX 5090 (mpv, 720 frames, median of three runs), Mode A went from 246.4 to 238.8 fps (−3%) and Mode C from 303.6 to 303.5 fps. It does 16-bit maths at the same rate as 32-bit. Intel Arc graphics cards weren't measured.
+- **The Fast sets change the picture.** They're Anime4K's own presets for weaker GPUs, built from its smaller networks: Mode C Fast is Clamp_Highlights, Upscale_Denoise_CNN_x2_M, AutoDownscalePre_x2, AutoDownscalePre_x4 and Upscale_CNN_x2_S, and Mode A Fast is Clamp_Highlights, Restore_CNN_M, Upscale_CNN_x2_M, AutoDownscalePre_x2, AutoDownscalePre_x4 and Upscale_CNN_x2_S. They're the bigger speed-up but a real quality trade-off: 44–50 dB from the normal sets.
+
+### Encoding with the Intel GPU in mpv
+
+For PCs without an NVIDIA GPU. Mode C, QSV decoding (`qsv-copy`), `hevc_qsv`:
+
+| Rendering | Frames to the encoder | fps |
+|---|---|---:|
+| `vf=gpu=api=vulkan` | read back to system memory (`sw-format=nv12`) | **6.83** |
+| `vf=gpu=api=d3d11` | read back to system memory | 6.04 |
+| `vf=gpu=api=d3d11` | handed straight to QSV (`hw-output=yes:hw-format=nv12`) | 5.91 |
+
+- **Vulkan is the fastest route here,** 13% ahead of FFmpeg's all-Intel route (6.04 fps).
+- **Handing D3D11 frames straight to QSV works** ("Rendering directly to nv12 hardware frames"), but gains nothing on this GPU: copying frames isn't the limit.
+- **Supported encoders:** `hevc_qsv` (8-bit and Main 10 with `sw-format=p010`) and `h264_qsv` work. `av1_qsv` fails, because the UHD 770 has no AV1 encoder.
+
 These runs differ from the rest of this page; they were measured as follows:
 - **Clip:** 10 seconds (240 frames) of a 1080p anime clip, re-encoded to 8-bit H.264 so that the Intel GPU can decode it.
 - **Upscale:** Anime4K Mode A (`Anime4K_ModeA.glsl`) or Mode C (`Anime4K_ModeC.glsl`) to 3840×2160, with EWA Lanczos resampling (`--scale=ewa_lanczos --dscale=ewa_lanczos` in mpv, libplacebo's `ewa_lanczos` in FFmpeg).
 - **Output:** HEVC, 8-bit. NVENC at P5, constant QP 22; `hevc_qsv` at preset fast, `global_quality` 22; `libx265` at preset fast, CRF 22.
 - **FPS:** wall-clock time including start-up, single runs.
+- **Shaders:** Mode A and Mode C are Anime4K 4.0.1's standard high-quality presets; the Fast sets come from the same release.
 - **Builds:** MediaStack `5fa9c13` (FFmpeg `f223bcfcbe`, libplacebo `405175f8`, mpv `30f05d3b01`), October 2026.
 
 ## How these were measured
