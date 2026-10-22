@@ -19,6 +19,18 @@ cp "$MS_PREFIX"/bin/*.dll "$dist/"
 nvencc=out/ucrt64/nvencc
 if [[ -f "$nvencc/NVEncC64.exe" ]]; then
     cp -n "$nvencc"/*.exe "$nvencc"/*.dll "$dist/" 2>/dev/null || true
+    # NVRTC (--vpp-custom) is loaded at runtime, so ldd can't find it; copy the
+    # CUDA toolkit's, as NVEnc's release CI does. It must be the CUDA NVEncC was
+    # built with (CUDA_PATH, as nvencc-spike.ps1 uses).
+    if [[ -n "${CUDA_PATH:-}" ]]; then
+        cuda=$(cygpath -u "$CUDA_PATH")
+        for f in "$cuda"/bin/x64/nvrtc64_*_0.dll "$cuda"/bin/x64/nvrtc-builtins64_*.dll \
+                 "$cuda"/bin/nvrtc64_*_0.dll "$cuda"/bin/nvrtc-builtins64_*.dll; do
+            [[ -f "$f" ]] && cp -f "$f" "$dist/"
+        done
+    fi
+    ls "$dist"/nvrtc64_*_0.dll >/dev/null 2>&1 ||
+        warn "NVRTC not found in CUDA_PATH; NVEncC --vpp-custom won't work"
 else
     warn "NVEncC not built yet (scripts/windows/nvencc-spike.ps1); packaging without it"
 fi
