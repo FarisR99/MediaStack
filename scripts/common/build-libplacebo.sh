@@ -15,3 +15,16 @@ case "$MS_TARGET" in
 esac
 
 meson_build libplacebo "${args[@]}"
+
+# The library is named after its API version (libplacebo-<api>.dll,
+# libplacebo.so.<api>), and installing a new one leaves the old one behind,
+# which NVEncC's build and package.sh would pick up. Remove other versions.
+api=$(sed -n 's/^#define PL_API_VER \([0-9]*\)$/\1/p' "$MS_PREFIX/include/libplacebo/config.h")
+[[ -n "$api" ]] || die "can't read PL_API_VER from the installed config.h"
+for f in "$MS_PREFIX"/bin/libplacebo-*.dll "$MS_PREFIX"/lib/libplacebo.so.*; do
+    [[ -e "$f" ]] || continue
+    case "$(basename "$f")" in
+        libplacebo-"$api".dll|libplacebo.so."$api"|libplacebo.so."$api".*) ;;
+        *) msg "Removing stale $(basename "$f")"; rm -f "$f" ;;
+    esac
+done

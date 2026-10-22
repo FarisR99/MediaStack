@@ -148,6 +148,10 @@ foreach ($rs in @{ lib = 'dovi.lib'; dll = 'libdovi.dll' }, @{ lib = 'hdr10plus-
     Copy-Item $dll $StageLib
 }
 
+# NVEnc's post-build step copies libplacebo-*.dll into the build output, which
+# keeps DLLs of older libplacebo API versions; drop them so only the staged one
+# reaches out\ucrt64\nvencc.
+Remove-Item (Join-Path $Nvenc "_build\x64\$Configuration\libplacebo-*.dll") -ErrorAction SilentlyContinue
 Write-Host "==> MSBuild NVEncC ($Configuration|x64, $Jobs jobs)"
 # One project at a time, $Jobs files at a time, and nvcc without -t 0
 # (cudaver.props sets CUDA_THREADS; a global property overrides it).
