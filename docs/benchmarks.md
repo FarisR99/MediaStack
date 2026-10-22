@@ -196,6 +196,59 @@ These runs differ from the rest of this page; they were measured as follows:
 
 Don't compare these figures directly with the tables above.
 
+## Intel integrated graphics (UHD 770)
+
+The same Anime4K 1080p → 4K upscale on the Intel UHD 770 built into the CPU, with the RTX 5090 used only for encoding (or not at all). The Intel graphics driver matters more than anything else here: updating it from the motherboard maker's July 2022 driver (31.0.101.3302) to Intel's own September 2026 driver (32.0.101.7092) made every run about five times as fast.
+
+| Shader | Tool | Rendering | Decode → encode | Old driver fps | New driver fps | Change |
+|---|---|---|---|---:|---:|---:|
+| Mode C | mpv | `vf=gpu=api=vulkan` | QSV (`qsv-copy`) → `hevc_nvenc` | – | **8.12** | – |
+| Mode C | mpv | `vf=gpu=api=vulkan` | software → `hevc_nvenc` | 1.54 | 7.86 | +410% |
+| Mode C | FFmpeg | `libplacebo` (Vulkan) | software → `hevc_nvenc` | 1.31 | 7.00 | +434% |
+| Mode C | mpv | `vf=gpu=api=d3d11` | software → `hevc_nvenc` | 1.49 | 6.57 | +341% |
+| Mode C | FFmpeg | `libplacebo` (Vulkan) | QSV → `hevc_qsv` | – | 6.04 | – |
+| Mode A | mpv | `vf=gpu=api=vulkan` | software → `hevc_nvenc` | – | **4.34** | – |
+| Mode A | FFmpeg | `libplacebo` (Vulkan) | software → `hevc_nvenc` | 0.77 | 4.00 | +419% |
+| Mode A | FFmpeg | `libplacebo` (Vulkan) | software → `libx265` | 0.76 | – | – |
+| Mode A | FFmpeg | `libplacebo` (Vulkan) | QSV → `hevc_qsv` | failed | – | – |
+
+- **Update the Intel driver first.** Get it from Intel ("Intel 11th–14th Gen Processor Graphics"), not from the PC or motherboard maker, whose drivers can be years old. The old driver's Vulkan support was also older (1.3.219), and the all-Intel QSV route failed on it: after about 2 minutes the driver reported `VK_ERROR_OUT_OF_DEVICE_MEMORY`, `hevc_qsv` failed with `Invalid FrameType:0`, and FFmpeg hung instead of exiting.
+- **Anime4K is the limit, not the encoder.** On the old driver, encoding with `libx265` on the CPU and with NVENC on the RTX 5090 gave the same speed.
+- **mpv with Vulkan is the fastest route:** 12% ahead of FFmpeg with Mode C and 9% with Mode A. On the new driver it's also 20% faster than mpv's D3D11 rendering; on the old driver the two were within 3%.
+- **Keeping everything on the Intel GPU costs about 14%** (6.04 vs 7.00 fps), because decoding, Anime4K and encoding then share it. That route is for PCs without an NVIDIA GPU.
+- **Mode C is about 80% faster than Mode A** on the new driver (7.86 vs 4.34 fps in mpv).
+- **To decode on the Intel GPU in mpv, use `--hwdec=qsv-copy`.** It uses FFmpeg's QSV decoders, which always run on the Intel GPU. Avoid `d3d11va-copy` and `vulkan-copy` here: they open the default GPU (here the RTX 5090). It measured 3% faster than software decoding (8.12 vs 7.86 fps), within run-to-run variation.
+
+The fastest command in each tool (Mode C, new driver). Select the Intel GPU by name in mpv (`mpv --vulkan-device=help` lists them) and by index in FFmpeg (`1` here):
+
+```powershell
+# mpv: 7.86 fps
+mpv.com in.mkv --no-audio --hwdec=no --glsl-shaders=Anime4K_ModeC.glsl `
+  --scale=ewa_lanczos --dscale=ewa_lanczos "--vulkan-device=Intel(R) UHD Graphics 770" `
+  --vf=gpu=api=vulkan:w=3840:h=2160:hw-output=no:sw-format=nv12 `
+  --o=out.mkv --ovc=hevc_nvenc --ovcopts=preset=p5,rc=constqp,qp=22
+
+# FFmpeg: 7.00 fps
+ffmpeg -init_hw_device vulkan=vk:1 -filter_hw_device vk -i in.mkv -an `
+  -vf "libplacebo=w=3840:h=2160:upscaler=ewa_lanczos:downscaler=ewa_lanczos:custom_shader_path=Anime4K_ModeC.glsl,format=nv12" `
+  -c:v hevc_nvenc -preset p5 -rc constqp -qp 22 out.mkv
+
+# FFmpeg, Intel GPU only: 6.04 fps
+ffmpeg -init_hw_device qsv=qs -init_hw_device vulkan=vk:1 -filter_hw_device vk `
+  -hwaccel qsv -hwaccel_device qs -hwaccel_output_format qsv -i in.mkv -an `
+  -vf "hwdownload,format=nv12,libplacebo=w=3840:h=2160:upscaler=ewa_lanczos:downscaler=ewa_lanczos:custom_shader_path=Anime4K_ModeC.glsl,format=nv12" `
+  -c:v hevc_qsv -preset fast -global_quality 22 out.mkv
+```
+
+`vf=gpu=api=d3d11` takes `--d3d11-adapter=Intel` to pick the Intel GPU. It ignores `sw-format=nv12` (it has no buffer downloads) and reads frames back as RGB.
+
+These runs differ from the rest of this page; they were measured as follows:
+- **Clip:** 10 seconds (240 frames) of a 1080p anime clip, re-encoded to 8-bit H.264 so that the Intel GPU can decode it.
+- **Upscale:** Anime4K Mode A (`Anime4K_ModeA.glsl`) or Mode C (`Anime4K_ModeC.glsl`) to 3840×2160, with EWA Lanczos resampling (`--scale=ewa_lanczos --dscale=ewa_lanczos` in mpv, libplacebo's `ewa_lanczos` in FFmpeg).
+- **Output:** HEVC, 8-bit. NVENC at P5, constant QP 22; `hevc_qsv` at preset fast, `global_quality` 22; `libx265` at preset fast, CRF 22.
+- **FPS:** wall-clock time including start-up, single runs.
+- **Builds:** MediaStack `5fa9c13` (FFmpeg `f223bcfcbe`, libplacebo `405175f8`, mpv `30f05d3b01`), October 2026.
+
 ## How these were measured
 
 - **Machine:** Windows 11, RTX 5090 (driver 617.14), 24 CPU threads.
