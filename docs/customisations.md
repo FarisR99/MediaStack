@@ -53,6 +53,8 @@ The fork turns mpv into a **GPU-accelerated encoder**. The `gpu` video filter re
 - **Works with current libplacebo.** Upstream NVEncC only recognises libplacebo releases up to API 360, so with the stack's newer libplacebo its `--vpp-libplacebo-*` filters would silently be unavailable. The fork also accepts whichever libplacebo version it was compiled against.
 - **RTX HDR with frame interpolation, and HDR10 metadata by default.** With `--vpp-ngx-truehdr` and `--vpp-fruc` together, upstream interpolates after the HDR conversion, in 8 bits, which visibly reduced the HDR output's precision on every frame. The fork interpolates first, so the HDR output is untouched. `--vpp-ngx-truehdr` encodes are now also tagged BT.2020/PQ and carry HDR10 mastering-display and light-level metadata (peak = `maxluminance`) without extra options; upstream wrote neither unless you passed `--colorprim/--transfer/--colormatrix` and `--max-cll/--master-display`. Options you set yourself still win.
 
+- **Faster `--vpp-maa`:** the anti-aliasing filter's supersampling resizes run in two cheap passes instead of one expensive one, and its rotations read and write memory more efficiently. Output is unchanged. Anime4K 1080p → 4K with `--vpp-maa ss=2.0` went from 104 to 131 fps on an RTX 5090.
+
 ## FFmpeg
 
 - **libplacebo straight into NVENC.** FFmpeg can hand Vulkan frames to CUDA, which is what NVENC needs, but on NVIDIA that failed with `CUDA_ERROR_INVALID_VALUE` once FFmpeg started creating Vulkan images with "host transfer" usage, which CUDA can't map. The fork leaves that usage off on Vulkan devices set up for CUDA. Upscaling with `libplacebo` and encoding with `hevc_nvenc`/`av1_nvenc` then needs no detour through system memory.
