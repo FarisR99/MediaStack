@@ -71,3 +71,28 @@ The same with Vulkan (works on Linux too), into NVENC and into FFmpeg's Vulkan e
 .\mpv.com --no-config nvenc.mkv --vf=gpu=api=vulkan:hw-output=yes:hw-format=nv12 --o=mpv-vk.mkv --ovc=hevc_nvenc -v
 .\mpv.com --no-config nvenc.mkv --vf=gpu=api=vulkan:hw-output=yes:hw-format=nv12 --o=mpv-vkenc.mkv --ovc=hevc_vulkan -v
 ```
+
+For 10-bit output, use `hw-format=p010` and a Main 10 profile. On D3D11 this keeps frames on the GPU too:
+
+```powershell
+.\mpv.com --no-config nvenc.mkv --vf=gpu=api=d3d11:hw-output=yes:hw-format=p010 --o=mpv10.mkv --ovc=hevc_nvenc --ovcopts=profile=main10 -v
+```
+
+## AMD AMF (not tested by us yet)
+
+FFmpeg's AMF encoders are built on Windows, and AMF takes D3D11 frames directly, so the zero-copy path is the same one NVENC uses. We haven't run it on an AMD GPU. If you have one, this is what to try:
+
+```powershell
+.\ffmpeg.exe -hide_banner -encoders | findstr amf    # h264_amf, hevc_amf, av1_amf (AV1 needs RDNA3)
+.\ffmpeg.exe -hide_banner -filters  | findstr amf    # vpp_amf, sr_amf, vqe_amf, frc_amf
+
+# 8-bit: render with D3D11, hand NV12 frames straight to AMF
+.\mpv.com --no-config nvenc.mkv --vf=gpu=api=d3d11:hw-output=yes:hw-format=nv12 `
+  --o=amf.mkv --ovc=hevc_amf --ovcopts=usage=transcoding,quality=quality,rc=cqp,qp_i=22,qp_p=22 -v
+
+# 10-bit
+.\mpv.com --no-config nvenc.mkv --vf=gpu=api=d3d11:hw-output=yes:hw-format=p010 `
+  --o=amf10.mkv --ovc=hevc_amf --ovcopts=usage=transcoding,quality=quality,rc=cqp,qp_i=22,qp_p=22,profile=main10 -v
+```
+
+Look for `Rendering directly to nv12`/`p010 hardware frames` and no `Downloading` line, then check the result with `ffprobe`. `--hw-output=no` forces the old download path if something goes wrong, and the driver must be recent enough for 10-bit AMF (23.30 or newer). AMF on Linux is a separate story: the stack doesn't build it, and AMD's runtime needs AMD's Vulkan driver.

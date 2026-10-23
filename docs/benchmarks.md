@@ -91,6 +91,8 @@ Some other things the runs showed:
 
 The same Anime4K 1080p → 4K upscale with other encoders, each at a fast preset, with software and hardware decoding.
 
+AMD's AMF encoders are built on Windows and now take the same D3D11 frames without a download, but no AMD GPU was available for these runs, so they aren't in the table.
+
 | Encoder (preset) | FFmpeg, sw decode | FFmpeg, hw decode | mpv, sw decode | mpv, hw decode | NVEncC, sw decode | NVEncC, hw decode |
 |---|---:|---:|---:|---:|---:|---:|
 | `libx264` (fast, CRF 22) | 39.6 | **40.9** | 27.0 | 27.3 | – | – |

@@ -68,6 +68,49 @@ ffmpeg -init_hw_device vulkan=vk:0,disable_multiplane=1 -filter_hw_device vk -f 
   -vf "format=nv12,hwupload,libplacebo=w=3840:h=2160:format=nv12,hwupload=derive_device=cuda" -c:v hevc_nvenc -f null -
 ```
 
+**D3D11 P010 hardware output** (validated on the RTX 5090 against the Vulkan path). Both runs must log `Rendering directly to p010 hardware frames`; their decoded frames must be identical:
+
+```powershell
+ffmpeg -f lavfi -i testsrc2=s=1920x1080:r=30 -t 2 -c:v hevc_nvenc -profile:v main10 -pix_fmt p010le in10.mkv
+mpv.com --no-config in10.mkv --vf=gpu=api=d3d11:hw-output=yes:hw-format=p010 `
+  --o=d3d11-p010.mkv --ovc=hevc_nvenc --ovcopts=preset=p5,rc=constqp,qp=22,profile=main10 -v
+mpv.com --no-config in10.mkv --vf=gpu=api=vulkan:hw-output=yes:hw-format=p010 `
+  --o=vulkan-p010.mkv --ovc=hevc_nvenc --ovcopts=preset=p5,rc=constqp,qp=22,profile=main10 -v
+ffmpeg -i d3d11-p010.mkv -f framemd5 - | findstr /v "^#"
+ffmpeg -i vulkan-p010.mkv -f framemd5 - | findstr /v "^#"
+```
+
+With an 8-bit source the two paths differ by rounding only (per-frame PSNR ≥ 92 dB); the 8-bit NV12 path must stay bit-identical. QSV P010 mapping also works on the UHD 770 (`--d3d11-adapter=Intel --ovc=hevc_qsv`).
+
+**AMD AMF (built, but not yet run on AMD hardware).** Everything AMF needs is already in the Windows build (`--enable-amf`, `amf-headers` from MSYS2). AMF takes D3D11 frames directly, so the zero-copy path is the same one NVENC uses; the AMF-specific risks are driver behaviour (texture views, synchronisation, colour conversion), not our code. Run this when an AMD GPU is available:
+
+```powershell
+ffmpeg -hide_banner -encoders | findstr amf     # h264_amf, hevc_amf, av1_amf (AV1 needs RDNA3)
+ffmpeg -hide_banner -filters  | findstr amf     # vpp_amf, sr_amf, vqe_amf, frc_amf
+
+# 8-bit zero-copy: render on the AMD GPU, hand NV12 D3D11 frames straight to AMF
+mpv.com --no-config in8.mkv --vf=gpu=api=d3d11:hw-output=yes:hw-format=nv12 `
+  --o=amf.mkv --ovc=hevc_amf --ovcopts=usage=transcoding,quality=quality,rc=cqp,qp_i=22,qp_p=22 -v
+
+# 10-bit zero-copy (P010)
+mpv.com --no-config in10.mkv --vf=gpu=api=d3d11:hw-output=yes:hw-format=p010 `
+  --o=amf10.mkv --ovc=hevc_amf --ovcopts=usage=transcoding,quality=quality,rc=cqp,qp_i=22,qp_p=22,profile=main10 -v
+
+# Compare with the download path
+mpv.com --no-config in8.mkv --vf=gpu=api=d3d11:hw-output=no `
+  --o=amf-sw.mkv --ovc=hevc_amf --ovcopts=usage=transcoding,quality=quality,rc=cqp,qp_i=22,qp_p=22 -v
+```
+
+Check, in order:
+
+1. The log says `Rendering directly to nv12`/`p010 hardware frames`, not `Downloading`. No `Could not map` or AMF error.
+2. `ffprobe -show_entries stream=pix_fmt,profile,color_primaries,color_transfer,color_space` matches the source (10-bit → `yuv420p10le`/`Main 10`; HDR → BT.2020/PQ tags).
+3. HDR10 metadata is written when the source has it: `ffprobe -show_frames -show_entries frame=side_data_list` shows the mastering-display and content-light side data (AMF reads it per frame, unlike NVENC).
+4. Decode the result and compare against the download-path encode with PSNR. AMF need not be deterministic, so don't compare bytes.
+5. Record the GPU, the Adrenalin/driver version and the AMF runtime version (`ffmpeg -v verbose` logs it), plus fps for both paths. A driver older than 23.30 has no 10-bit AMF support.
+
+If AMF fails, `hw-output=no` is the workaround; `hw-output=auto` already picks the D3D11 path for AMF, so a failure is a regression for AMD users. Known gaps, not bugs to chase: no Vulkan → AMF mapping (so `api=vulkan` and Linux still download/upload), no 4:4:4, and `--ovc-device=amf` cannot select an adapter.
+
 ## Finding a performance bottleneck (Windows)
 
 Use a 60 s clip, not 20 s: start-up is about 15% of a 20 s run.
