@@ -5,7 +5,8 @@
 # Usage: bump.sh [--ai] [project...] [-- <extra git commit args>]
 #   project  defaults to every submodule whose HEAD differs from its pin
 #   --ai     prefix the subject with "AI: " (agent-authored commits)
-#   e.g. scripts/bump.sh --ai nvenc -- --trailer "Co-Authored-By: Name <email>"
+#   e.g. scripts/bump.sh --ai nvenc -- --no-verify
+#   Claude Code also passes -- --trailer "Co-Authored-By: <Claude model> <noreply@anthropic.com>"
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/common/lib.sh"
 cd "$STACK_ROOT"

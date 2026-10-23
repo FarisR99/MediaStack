@@ -13,7 +13,7 @@ Human version: `docs/daily-workflow.md` and `docs/updating-upstream.md`.
 1. `scripts/status.sh`: the project must be on its tracked branch with a clean tree. If it isn't, run `scripts/setup.sh`. If it's still wrong, stop and tell the user.
 2. Edit, build and test (`build-*.md`, `testing.md`).
 3. Commit **inside the submodule**: `git -C <p> commit` with an `AI:` message (see `commit-conventions.md`).
-4. Bump: `scripts/bump.sh --ai <p> -- --trailer "Co-Authored-By: <model> <noreply@anthropic.com>"`. This stages the gitlink and commits it with a list of the commits it pulls in.
+4. Bump: `scripts/bump.sh --ai <p>`, plus `-- --trailer "Co-Authored-By: <Claude model> <noreply@anthropic.com>"` when the agent is Claude Code (other agents omit it). This stages the gitlink and commits it with a list of the commits it pulls in.
 5. Don't push unless asked. When asked, push the submodule first (`git -C <p> push origin <branch>`), then the superrepo. `push.recurseSubmodules=check` refuses the superrepo push otherwise.
 
 Superrepo-only changes (scripts, docs, `stack.conf`) are ordinary commits in the superrepo.

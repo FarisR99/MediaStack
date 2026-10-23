@@ -28,7 +28,7 @@ Build order (each one links the previous ones from the stack prefix): nv-codec-h
 3. **Never push** a fork or the superrepo unless the user asks.
 4. **Never commit agent docs into a fork.** `<project>/AGENTS.md`, `AGENTS.override.md` and `CLAUDE.local.md` are generated, and git-excluded. Edit `agents/<project>/AGENTS.md`, then run `scripts/sync-agent-docs.sh`.
 5. **Upstream changes come in by merge, never by rebase** (`scripts/merge-upstream.sh <project>`). Don't rewrite published history on any branch.
-6. **Commit messages:** agent-authored commits start with `AI: <area>: <summary>` and end with a `Co-Authored-By:` trailer, in every repo including this one. Merge commits keep git's default message, with no `AI:` prefix. Details: `docs/agents/commit-conventions.md`.
+6. **Commit messages:** agent-authored commits start with `AI: <area>: <summary>`, in every repo including this one. Add a `Co-Authored-By:` trailer **only when the agent is Claude Code** (naming the Claude model); other harnesses and models must omit it, because GitHub resolves `noreply@anthropic.com` to the claude account. Merge commits keep git's default message, with no `AI:` prefix. Details: `docs/agents/commit-conventions.md`.
 7. **Say what you didn't test.** Windows-only code can't be built from WSL/Linux. Say so in the commit body, e.g. "Not yet built on Windows."
 8. **FFmpeg is built GPL + nonfree.** Never publish or redistribute the binaries.
 9. Keep `stack.conf` the only place versions are written down. Scripts and the Dockerfile read from it.

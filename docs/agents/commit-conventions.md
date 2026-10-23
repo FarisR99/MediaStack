@@ -10,8 +10,14 @@ AI: <area>: <imperative summary, lower case after the colon>
 <Why the change is needed and what it does, wrapped prose. Mention what was
 and wasn't tested, e.g. "Not yet built on Windows.">
 
-Co-Authored-By: <Model name> <noreply@anthropic.com>
+Co-Authored-By: <Claude model> <noreply@anthropic.com>
 ```
+
+The `Co-Authored-By` trailer is **only for Claude Code**. Name the Claude
+model that ran the session, as the existing commits do (`Claude Opus 5.5`).
+Any other harness or model (OpenCode, DeepSeek, a local LLM) must omit it:
+GitHub resolves `noreply@anthropic.com` to the `claude` account, so the
+commit would be credited to Claude even though it never ran.
 
 - `<area>` follows the target project's own convention. For mpv that's the file or subsystem (`vf_gpu`, `vo_lavc`, `ra_pl`; see `mpv/DOCS/contribute.md`). FFmpeg uses `lavc/nvenc` or `avfilter/vf_libplacebo`. libplacebo uses `vulkan`, `renderer` and so on. NVEnc uses the file stem (`libplacebo`, `avutil`). In the superrepo the areas are `scripts`, `docs`, `linux`, `windows`, `stack`, `bump`, and `repo`.
 - One logical change per commit, so that upstream merges and cherry-picks stay easy.
