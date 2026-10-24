@@ -51,6 +51,7 @@ Read the matching doc **before** starting work of that kind.
 | Writing a commit message | `docs/agents/commit-conventions.md` |
 | Building or packaging on Windows (MSYS2 UCRT64, MSVC NVEncC) | `docs/agents/build-windows.md` |
 | Building in Docker, exporting or installing on a Linux host | `docs/agents/build-linux-docker.md` |
+| Changing or packaging the Anime4K shader presets | `docs/anime4k-presets.md` |
 | Changing FFmpeg configure flags or another project's build options | `docs/agents/build-config.md` |
 | Verifying a change (smoke tests) | `docs/agents/testing.md` |
 | A build or runtime failure | `docs/agents/troubleshooting.md` |

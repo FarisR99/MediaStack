@@ -7,9 +7,16 @@ set -euo pipefail
 [[ "$MS_TARGET" == ucrt64 ]] || die "run from the MSYS2 UCRT64 shell"
 cd "$STACK_ROOT"
 
+# Generate the Anime4K presets before touching the old dist: a failed download
+# must leave the previous package intact. They ship in dist/shaders/anime4k.
+presets=out/shaders/anime4k
+scripts/anime4k-presets.sh --out "$presets"
+
 dist=out/ucrt64/dist
 rm -rf "$dist"
 mkdir -p "$dist"
+mkdir -p "$dist/shaders/anime4k"
+cp -f "$presets"/*.glsl "$dist/shaders/anime4k/"
 
 for f in mpv.exe mpv.com ffmpeg.exe ffprobe.exe; do
     [[ -f "$MS_PREFIX/bin/$f" ]] && cp "$MS_PREFIX/bin/$f" "$dist/"
@@ -79,6 +86,7 @@ done
     for p in $STACK_PROJECTS; do
         printf '%-17s %s\n' "$p:" "$(git -C "$p" describe --tags --always --dirty 2>/dev/null)"
     done
+    printf '%-17s %s (%s)\n' 'anime4k:' "$ANIME4K_VERSION" "$ANIME4K_COMMIT"
     for url in "$NVIDIA_NGX_URL" "$NVIDIA_FRUC_URL" "$NVIDIA_VSHIP_URL"; do
         [[ -n "$url" ]] && echo "nvidia runtime:   $(basename "$url")"
     done

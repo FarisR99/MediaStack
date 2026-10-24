@@ -24,6 +24,7 @@ Start with [Getting started](getting-started.md) on a new machine, then the buil
 | Page | Read it when |
 |---|---|
 | [What's customised](customisations.md) | You want to know what each fork changes compared to upstream, and why. |
+| [Anime4K presets](anime4k-presets.md) | You want the combined low/medium/high/ultra shader files, or to bump the Anime4K pin. |
 | [Benchmarks](benchmarks.md) | You want to see how much faster the forks are than the originals for Anime4K upscaling, and the fastest settings for each tool. |
 | [Licensing](licensing.md) | You're wondering what you may share: MediaStack is MIT, but the FFmpeg builds are nonfree and must not be redistributed. |
 

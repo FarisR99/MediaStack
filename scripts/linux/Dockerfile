@@ -109,6 +109,7 @@ RUN --mount=type=cache,target=/ccache --mount=type=cache,target=/build/nvenc \
     scripts/common/build-nvenc.sh
 
 COPY scripts/linux/finalize.sh scripts/linux/
+COPY --from=shaders . ${LINUX_PREFIX}/share/mediastack/shaders/anime4k/
 COPY --from=meta BUILDINFO.txt /tmp/BUILDINFO.txt
 RUN scripts/linux/finalize.sh /tmp/BUILDINFO.txt
 

@@ -23,12 +23,20 @@ sha=$(git rev-parse --short HEAD 2>/dev/null || echo uncommitted)
     for p in $STACK_PROJECTS; do
         printf '%-17s %s %s\n' "$p:" "$(git -C "$p" rev-parse --short=12 HEAD)" "$(describe "$p")"
     done
+    printf '%-17s %s (%s)\n' 'anime4k:' "$ANIME4K_VERSION" "$ANIME4K_COMMIT"
 } > "$out/meta/BUILDINFO.txt"
 cat "$out/meta/BUILDINFO.txt"
+
+# The presets are generated outside the Docker context (out/ is ignored there)
+# and passed in as the 'shaders' named context. A failure aborts before the
+# expensive image build.
+presets="$STACK_ROOT/out/shaders/anime4k"
+scripts/anime4k-presets.sh --out "$presets"
 
 DOCKER_BUILDKIT=1 docker build \
     -f scripts/linux/Dockerfile \
     --build-context meta="$out/meta" \
+    --build-context shaders="$presets" \
     --build-arg CUDA_VERSION="$CUDA_VERSION" \
     --build-arg UBUNTU_VERSION="$UBUNTU_VERSION" \
     --build-arg MESON_VERSION="$MESON_VERSION" \
